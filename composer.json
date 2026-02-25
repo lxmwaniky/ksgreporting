@@ -1,0 +1,20 @@
+{
+    "name": "ksg/weekly-reports",
+    "description": "Kenya School of Government Weekly Status Report System",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "ext-pdo": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-mbstring": "*",
+        "phpmailer/phpmailer": "^6.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "KSG\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
