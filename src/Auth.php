@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace KSG;
@@ -37,6 +38,11 @@ class Auth
         return $_SESSION['user'] ?? null;
     }
 
+    public static function user(): ?array
+    {
+        return self::currentUser();
+    }
+
     public static function login(array $user): void
     {
         session_regenerate_id(true);
@@ -56,6 +62,11 @@ class Auth
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
         return $_SESSION['csrf_token'];
+    }
+
+    public static function generateCsrf(): string
+    {
+        return self::csrfToken();
     }
 
     public static function validateCsrf(string $token): bool

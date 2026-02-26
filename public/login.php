@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -36,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($user && password_verify($password, $user['password_hash'])) {
                 unset($user['password_hash']);
-                
+
                 Auth::login($user);
-                
+
                 $redirect = $_GET['redirect'] ?? '/index.php';
                 header('Location: ' . $redirect);
                 exit;
@@ -73,8 +74,8 @@ require_once __DIR__ . '/../templates/header.php';
         <form method="POST" action="/login.php<?= !empty($_GET['redirect']) ? '?redirect=' . urlencode($_GET['redirect']) : '' ?>">
             <div class="form-group">
                 <label for="email">Email Address</label>
-                <input type="email" name="email" id="email" 
-                       value="<?= htmlspecialchars($email ?? '', ENT_QUOTES, 'UTF-8') ?>" 
+                <input type="email" name="email" id="email"
+                       value="<?= htmlspecialchars($email ?? '', ENT_QUOTES, 'UTF-8') ?>"
                        required autofocus>
             </div>
 

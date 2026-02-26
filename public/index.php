@@ -11,21 +11,28 @@ use KSG\Report;
 Auth::startSession();
 Auth::requireLogin();
 
+$currentUser = Auth::user();
 $reportModel = new Report();
 
-$filters = [
-    'campus'     => $_GET['campus']     ?? '',
-    'department' => $_GET['department'] ?? '',
-    'week_start' => $_GET['week_start'] ?? '',
-];
-
-$page    = max(1, (int) ($_GET['page'] ?? 1));
+$filterCampus = $_GET['campus'] ?? '';
+$filterDept = $_GET['department'] ?? '';
+$page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 20;
-$offset  = ($page - 1) * $perPage;
 
-$reports = $reportModel->list($filters, $perPage, $offset);
-$total   = $reportModel->count($filters);
-$pages   = (int) ceil($total / $perPage);
+$filters = [];
+if ($filterCampus) $filters['campus'] = $filterCampus;
+if ($filterDept) $filters['department'] = $filterDept;
+
+if ($currentUser['role'] === 'hod') {
+    $filters['campus'] = $currentUser['campus'];
+    $filters['department'] = $currentUser['department'] ?? '';
+} elseif ($currentUser['role'] === 'director') {
+    $filters['campus'] = $currentUser['campus'];
+}
+
+$reports = $reportModel->list($filters, $page, $perPage);
+$total = $reportModel->count($filters);
+$totalPages = (int) ceil($total / $perPage);
 
 require_once __DIR__ . '/../templates/header.php';
 require_once __DIR__ . '/../templates/report_list.php';

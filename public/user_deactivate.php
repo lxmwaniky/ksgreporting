@@ -14,7 +14,7 @@ Auth::requireLogin();
 $currentUser = Auth::user();
 
 if (!in_array($currentUser['role'], ['admin', 'director'])) {
-    $_SESSION['error'] = 'Access denied. Only administrators and directors can activate users.';
+    $_SESSION['error'] = 'Access denied. Only administrators and directors can deactivate users.';
     header('Location: /users.php');
     exit;
 }
@@ -41,26 +41,32 @@ try {
     }
     
     if ($currentUser['role'] === 'director' && $user['campus'] !== $currentUser['campus']) {
-        $_SESSION['error'] = 'You can only activate users in your campus';
+        $_SESSION['error'] = 'You can only deactivate users in your campus';
         header('Location: /users.php');
         exit;
     }
     
-    if ($user['is_active']) {
-        $_SESSION['error'] = 'User is already active';
+    if ($user['id'] === $currentUser['id']) {
+        $_SESSION['error'] = 'You cannot deactivate your own account';
         header('Location: /users.php');
         exit;
     }
     
-    $stmt = $db->prepare("UPDATE users SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+    if (!$user['is_active']) {
+        $_SESSION['error'] = 'User is already inactive';
+        header('Location: /users.php');
+        exit;
+    }
+    
+    $stmt = $db->prepare("UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
     $stmt->execute([':id' => $userId]);
     
-    $_SESSION['success'] = "User {$user['name']} has been activated successfully";
+    $_SESSION['success'] = "User {$user['name']} has been deactivated successfully";
     header('Location: /users.php');
     exit;
     
 } catch (PDOException $e) {
-    error_log('User activation error: ' . $e->getMessage());
+    error_log('User deactivation error: ' . $e->getMessage());
     $_SESSION['error'] = 'Database error occurred';
     header('Location: /users.php');
     exit;
