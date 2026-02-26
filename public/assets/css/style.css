@@ -1,4 +1,4 @@
-
+/* public/assets/css/style.css */
 
 :root {
     --ksg-green:   #1a5c2a;
@@ -121,6 +121,11 @@ nav .nav-user {
     color: #333;
 }
 
+.form-group small {
+    font-size: .75rem;
+    color: #666;
+}
+
 .required { 
     color: var(--danger); 
 }
@@ -210,12 +215,15 @@ textarea:focus {
 }
 
 .badge-in_progress { background: #fff3cd; color: #856404; }
-.badge-completed   { background: #d1e7dd; color: #0a3622; }
-.badge-delayed     { background: #f8d7da; color: #842029; }
-.badge-on_track    { background: #cfe2ff; color: #084298; }
-.badge-pending     { background: #e2e3e5; color: #41464b; }
-.badge-scheduled   { background: #d3d3f5; color: #2a2a7a; }
-.badge-cancelled   { background: #f5c6cb; color: #721c24; }
+.badge-completed { background: #d1e7dd; color: #0a3622; }
+.badge-delayed { background: #f8d7da; color: #842029; }
+.badge-on_track { background: #cfe2ff; color: #084298; }
+.badge-pending { background: #e2e3e5; color: #41464b; }
+.badge-scheduled { background: #d3d3f5; color: #2a2a7a; }
+.badge-cancelled { background: #f5c6cb; color: #721c24; }
+.badge-staff { background: #e7f3ff; color: #004085; }
+.badge-hod { background: #fff3cd; color: #856404; }
+.badge-admin { background: #f8d7da; color: #721c24; }
 
 .signatures-grid {
     display: grid;
@@ -286,11 +294,11 @@ fieldset legend {
     transform: translateY(0);
 }
 
-.btn-primary   { background: var(--ksg-green); color: #fff; }
-.btn-secondary { background: var(--ksg-gold);  color: #fff; }
-.btn-danger    { background: var(--danger);     color: #fff; }
-.btn-sm        { padding: .3rem .75rem; font-size: .8rem; }
-.btn-block     { width: 100%; }
+.btn-primary { background: var(--ksg-green); color: #fff; }
+.btn-secondary { background: var(--ksg-gold); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: .3rem .75rem; font-size: .8rem; }
+.btn-block { width: 100%; }
 
 .btn-remove-row {
     background: none;
@@ -311,6 +319,12 @@ fieldset legend {
     margin-top: 1rem;
 }
 
+.actions-bar {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
 .report-actions {
     display: flex;
     justify-content: space-between;
@@ -326,7 +340,7 @@ fieldset legend {
     font-weight: 500;
 }
 
-.alert-error   { 
+.alert-error { 
     background: #f8d7da; 
     color: #842029; 
     border: 1px solid #f5c6cb; 
@@ -520,7 +534,8 @@ fieldset legend {
     #addRow,
     .no-print,
     .report-actions,
-    .filter-bar { 
+    .filter-bar,
+    .actions-bar { 
         display: none !important; 
     }
     
