@@ -19,6 +19,12 @@
             <div class="nav-links">
                 <a href="/index.php">Dashboard</a>
                 <a href="/submit.php">New Report</a>
+                <?php if (in_array($user['role'], ['admin', 'hod'])): ?>
+                    <a href="/users.php">User Management</a>
+                <?php endif; ?>
+                <?php if ($user['role'] === 'admin'): ?>
+                    <a href="/email_logs.php">Email Logs</a>
+                <?php endif; ?>
                 <span class="nav-user">
                     <?= htmlspecialchars($user['name'] ?? 'User', ENT_QUOTES, 'UTF-8') ?> 
                     (<?= htmlspecialchars(ucfirst($user['role'] ?? 'staff'), ENT_QUOTES, 'UTF-8') ?>)
