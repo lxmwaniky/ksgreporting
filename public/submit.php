@@ -1,5 +1,4 @@
 <?php
-// public/submit.php
 
 declare(strict_types=1);
 
@@ -8,6 +7,7 @@ require_once __DIR__ . '/../config/constants.php';
 
 use KSG\Auth;
 use KSG\Report;
+use KSG\Mailer;
 
 Auth::startSession();
 Auth::requireLogin();
@@ -44,7 +44,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reportModel = new Report();
         $reportId    = $reportModel->create($data);
 
-        $_SESSION['success'] = 'Report submitted successfully!';
+        try {
+            $mailer = new Mailer();
+            $emailSent = $mailer->sendReportNotification($reportId);
+            
+            if ($emailSent) {
+                $_SESSION['success'] = 'Report submitted successfully and notification sent to campus director';
+            } else {
+                $_SESSION['success'] = 'Report submitted successfully (email notification pending)';
+                error_log("Email notification failed for report ID: $reportId");
+            }
+        } catch (\Exception $e) {
+            error_log("Email error for report $reportId: " . $e->getMessage());
+            $_SESSION['success'] = 'Report submitted successfully (email notification failed)';
+        }
+
         header('Location: /view.php?id=' . $reportId);
         exit;
 

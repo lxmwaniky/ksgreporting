@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/constants.php';
+require_once __DIR__ . '/../config/database.php';
 
 use KSG\Database;
 
@@ -13,13 +14,11 @@ if (php_sapi_name() !== 'cli') {
 
 function showMenu(): void
 {
-    echo "\n\n";
-    echo "  Campus Directors Management\n";
+    echo "\n\nCampus Directors Management\n";
     echo "1. List all directors\n";
     echo "2. Add/Update director\n";
     echo "3. Deactivate director\n";
-    echo "4. Exit\n";
-    echo "\n";
+    echo "4. Exit\n\n";
 }
 
 function listDirectors(PDO $db): void
@@ -57,21 +56,27 @@ function addOrUpdateDirector(PDO $db): void
         $index++;
     }
 
-    $campusChoice = (int) readline("\nSelect Campus (1-" . count(CAMPUSES) . "): ");
+    echo "\nSelect Campus (1-" . count(CAMPUSES) . "): ";
+    $campusChoice = (int) trim(fgets(STDIN));
+    
     if (!isset($campusOptions[$campusChoice])) {
         echo "Invalid campus selection.\n";
         return;
     }
     $campus = $campusOptions[$campusChoice];
 
-    $name = readline("Director Name: ");
-    if (empty(trim($name))) {
+    echo "Director Name: ";
+    $name = trim(fgets(STDIN));
+    
+    if (empty($name)) {
         echo "Name cannot be empty.\n";
         return;
     }
 
-    $email = readline("Director Email: ");
-    if (empty(trim($email)) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    echo "Director Email: ";
+    $email = trim(fgets(STDIN));
+    
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         echo "Please provide a valid email address.\n";
         return;
     }
@@ -87,29 +92,29 @@ function addOrUpdateDirector(PDO $db): void
                 SET director_name = :name, 
                     director_email = :email, 
                     is_active = 1,
-                    updated_at = NOW()
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE campus = :campus
             ");
             $stmt->execute([
-                ':name'   => trim($name),
-                ':email'  => trim($email),
+                ':name'   => $name,
+                ':email'  => $email,
                 ':campus' => $campus,
             ]);
-            echo "\n✓ Director updated successfully!\n";
+            echo "\nDirector updated successfully\n";
         } else {
             $stmt = $db->prepare("
                 INSERT INTO campus_directors (campus, director_name, director_email, is_active, created_at)
-                VALUES (:campus, :name, :email, 1, NOW())
+                VALUES (:campus, :name, :email, 1, CURRENT_TIMESTAMP)
             ");
             $stmt->execute([
                 ':campus' => $campus,
-                ':name'   => trim($name),
-                ':email'  => trim($email),
+                ':name'   => $name,
+                ':email'  => $email,
             ]);
-            echo "\n✓ Director added successfully!\n";
+            echo "\nDirector added successfully\n";
         }
     } catch (PDOException $e) {
-        echo "\n✗ Database Error: " . $e->getMessage() . "\n";
+        echo "\nDatabase Error: " . $e->getMessage() . "\n";
     }
 }
 
@@ -124,14 +129,18 @@ function deactivateDirector(PDO $db): void
         $index++;
     }
 
-    $campusChoice = (int) readline("\nSelect Campus (1-" . count(CAMPUSES) . "): ");
+    echo "\nSelect Campus (1-" . count(CAMPUSES) . "): ";
+    $campusChoice = (int) trim(fgets(STDIN));
+    
     if (!isset($campusOptions[$campusChoice])) {
         echo "Invalid campus selection.\n";
         return;
     }
     $campus = $campusOptions[$campusChoice];
 
-    $confirm = readline("Are you sure you want to deactivate this director? (yes/no): ");
+    echo "Are you sure you want to deactivate this director? (yes/no): ";
+    $confirm = trim(fgets(STDIN));
+    
     if (strtolower($confirm) !== 'yes') {
         echo "Cancelled.\n";
         return;
@@ -140,18 +149,18 @@ function deactivateDirector(PDO $db): void
     try {
         $stmt = $db->prepare("
             UPDATE campus_directors 
-            SET is_active = 0, updated_at = NOW()
+            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
             WHERE campus = :campus
         ");
         $stmt->execute([':campus' => $campus]);
 
         if ($stmt->rowCount() > 0) {
-            echo "\n✓ Director deactivated successfully!\n";
+            echo "\nDirector deactivated successfully\n";
         } else {
-            echo "\n✗ No director found for this campus.\n";
+            echo "\nNo director found for this campus\n";
         }
     } catch (PDOException $e) {
-        echo "\n✗ Database Error: " . $e->getMessage() . "\n";
+        echo "\nDatabase Error: " . $e->getMessage() . "\n";
     }
 }
 
@@ -160,7 +169,8 @@ try {
 
     while (true) {
         showMenu();
-        $choice = readline("Select option (1-4): ");
+        echo "Select option (1-4): ";
+        $choice = trim(fgets(STDIN));
 
         switch ($choice) {
             case '1':
@@ -173,15 +183,16 @@ try {
                 deactivateDirector($db);
                 break;
             case '4':
-                echo "\nGoodbye!\n\n";
+                echo "\nGoodbye\n\n";
                 exit(0);
             default:
-                echo "\nInvalid option. Please try again.\n";
+                echo "\nInvalid option\n";
         }
 
-        readline("\nPress Enter to continue...");
+        echo "\nPress Enter to continue...";
+        fgets(STDIN);
     }
 } catch (Exception $e) {
-    echo "\n✗ Error: " . $e->getMessage() . "\n";
+    echo "\nError: " . $e->getMessage() . "\n";
     exit(1);
 }
