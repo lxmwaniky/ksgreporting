@@ -17,8 +17,8 @@ $reportCode = $report['report_code'] ?? 'N/A';
 
     <div class="report-document">
 
-        <!-- Document Header -->
-        <div class="doc-header">
+        <!-- Document Header — repeats on every printed page via CSS -->
+        <div class="doc-header print-repeat-header">
             <img src="/assets/img/ksg-logo.png" alt="KSG Logo" class="doc-logo">
             <div class="doc-header-title">
                 <h1>KENYA SCHOOL OF GOVERNMENT</h1>
@@ -30,7 +30,7 @@ $reportCode = $report['report_code'] ?? 'N/A';
         <div class="doc-divider"></div>
 
         <!-- Report Meta -->
-        <table class="doc-meta-table">
+        <table class="doc-meta-table print-repeat-meta">
             <tr>
                 <th>Campus</th>
                 <td><?= htmlspecialchars($campusName) ?></td>

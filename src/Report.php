@@ -136,11 +136,16 @@ class Report
             $params[':week_start'] = $filters['week_start'];
         }
 
-        $sql = "SELECT id, report_code, campus, department, hod_name, reporting_week_start, 
+        if (!empty($filters['created_by'])) {
+            $where[]                 = 'created_by = :created_by';
+            $params[':created_by']   = $filters['created_by'];
+        }
+
+        $sql = "SELECT id, report_code, campus, department, hod_name, reporting_week_start,
                        reporting_week_end, report_date, prepared_by_name, created_at
-                FROM reports 
-                WHERE " . implode(' AND ', $where) . " 
-                ORDER BY created_at DESC 
+                FROM reports
+                WHERE " . implode(' AND ', $where) . "
+                ORDER BY created_at DESC
                 LIMIT :limit OFFSET :offset";
 
         $stmt = $this->db->prepare($sql);
@@ -169,6 +174,11 @@ class Report
         if (!empty($filters['department'])) {
             $where[]               = 'department = :department';
             $params[':department'] = $filters['department'];
+        }
+
+        if (!empty($filters['created_by'])) {
+            $where[]               = 'created_by = :created_by';
+            $params[':created_by'] = $filters['created_by'];
         }
 
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM reports WHERE " . implode(' AND ', $where));

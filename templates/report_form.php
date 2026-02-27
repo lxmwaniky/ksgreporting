@@ -1,9 +1,20 @@
+<?php
+$sessionUser = KSG\Auth::currentUser();
+$prefillCampus      = $_POST['campus']      ?? $sessionUser['campus']      ?? '';
+$prefillDepartment  = $_POST['department']  ?? $sessionUser['department']  ?? '';
+$prefillHod         = $_POST['hod_name']    ?? $sessionUser['hod_name']    ?? '';
+$prefillPrepName    = $_POST['prepared_by_name']        ?? $sessionUser['name']        ?? '';
+$prefillPrepDesig   = $_POST['prepared_by_designation'] ?? $sessionUser['designation'] ?? '';
+
+$campusCodes = ['nairobi' => 'NBO', 'mombasa' => 'MSA', 'matuga' => 'MTG', 'embu' => 'EBU', 'baringo' => 'BRG'];
+$currentCode = $campusCodes[$prefillCampus] ?? '---';
+?>
 <div class="container">
     <div class="report-header">
         <img src="/assets/img/ksg-logo.png" alt="KSG Logo" class="logo">
         <h1>KENYA SCHOOL OF GOVERNMENT</h1>
         <h2>WEEKLY STATUS REPORT</h2>
-        <p class="form-ref" id="reportCodeDisplay">KSG/01/---/--</p>
+        <p class="form-ref">KSG/01/<?= htmlspecialchars($currentCode, ENT_QUOTES, 'UTF-8') ?>/--</p>
     </div>
 
     <?php if (!empty($error)): ?>
@@ -15,35 +26,21 @@
 
         <div class="form-grid">
             <div class="form-group">
-                <label for="campus">Campus <span class="required">*</span></label>
-                <select name="campus" id="campus" required>
-                    <option value="">-- Select Campus --</option>
-                    <?php foreach (CAMPUSES as $key => $label): ?>
-                        <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
-                            <?= ($_POST['campus'] ?? '') === $key ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <label>Campus</label>
+                <input type="hidden" name="campus" value="<?= htmlspecialchars($prefillCampus, ENT_QUOTES, 'UTF-8') ?>">
+                <div class="readonly-field"><?= htmlspecialchars(CAMPUSES[$prefillCampus] ?? $prefillCampus, ENT_QUOTES, 'UTF-8') ?></div>
             </div>
 
             <div class="form-group">
-                <label for="department">Department / Unit <span class="required">*</span></label>
-                <select name="department" id="department" required>
-                    <option value="">-- Select Department --</option>
-                    <?php foreach (DEPARTMENTS as $key => $label): ?>
-                        <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
-                            <?= ($_POST['department'] ?? '') === $key ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <label>Department / Unit</label>
+                <input type="hidden" name="department" value="<?= htmlspecialchars($prefillDepartment, ENT_QUOTES, 'UTF-8') ?>">
+                <div class="readonly-field"><?= htmlspecialchars(DEPARTMENTS[$prefillDepartment] ?? $prefillDepartment, ENT_QUOTES, 'UTF-8') ?></div>
             </div>
 
             <div class="form-group">
                 <label for="hod_name">HoD / HoS / Team Leader <span class="required">*</span></label>
                 <input type="text" name="hod_name" id="hod_name"
-                       value="<?= htmlspecialchars($_POST['hod_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                       value="<?= htmlspecialchars($prefillHod, ENT_QUOTES, 'UTF-8') ?>"
                        required maxlength="150">
             </div>
 
@@ -132,13 +129,13 @@
                 <div class="form-group">
                     <label>Name</label>
                     <input type="text" name="prepared_by_name"
-                           value="<?= htmlspecialchars($_POST['prepared_by_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                           value="<?= htmlspecialchars($prefillPrepName, ENT_QUOTES, 'UTF-8') ?>"
                            required maxlength="150">
                 </div>
                 <div class="form-group">
                     <label>Designation</label>
                     <input type="text" name="prepared_by_designation"
-                           value="<?= htmlspecialchars($_POST['prepared_by_designation'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                           value="<?= htmlspecialchars($prefillPrepDesig, ENT_QUOTES, 'UTF-8') ?>"
                            required maxlength="150">
                 </div>
                 <div class="form-group">
@@ -179,66 +176,41 @@
 
 <script>
 (function () {
-    // Campus code map for dynamic ref display
-    const campusCodes = {
-        nairobi: 'NBO',
-        mombasa: 'MSA',
-        matuga:  'MTG',
-        embu:    'EBU',
-        baringo: 'BRG',
-    };
+    const tbody  = document.querySelector('#activitiesTable tbody');
+    const addBtn = document.getElementById('addRow');
 
-    const campusSelect = document.getElementById('campus');
-    const codeDisplay  = document.getElementById('reportCodeDisplay');
-
-    function updateCode() {
-        const code = campusCodes[campusSelect.value] || '---';
-        codeDisplay.textContent = 'KSG/01/' + code + '/--';
-    }
-
-    if (campusSelect) {
-        campusSelect.addEventListener('change', updateCode);
-        updateCode();
-    }
-
-    // Add row
-    const tbody   = document.querySelector('#activitiesTable tbody');
-    const addBtn  = document.getElementById('addRow');
-
-    function getRowCount() {
-        return tbody.querySelectorAll('tr.activity-row').length;
-    }
-
-    function buildStatusOptions(selected) {
+    // Build status options from PHP — injected once, reused for every new row
+    const statusOptions = (function() {
         const statuses = <?= json_encode(STATUSES) ?>;
-        return Object.entries(statuses).map(([key, label]) =>
-            `<option value="${key}"${key === selected ? ' selected' : ''}>${label}</option>`
-        ).join('');
-    }
-
-    function addRow() {
-        const i = getRowCount();
-        const tr = document.createElement('tr');
-        tr.className = 'activity-row';
-        tr.innerHTML = `
-            <td class="row-num">${i + 1}</td>
-            <td><input type="text" name="activities[${i}][activity]" placeholder="Describe the activity or issue" maxlength="500"></td>
-            <td><select name="activities[${i}][status]"><option value="">-- Status --</option>${buildStatusOptions('')}</select></td>
-            <td><input type="text" name="activities[${i}][action_needed]" placeholder="Action required" maxlength="500"></td>
-            <td><input type="text" name="activities[${i}][notes]" placeholder="Additional notes" maxlength="500"></td>
-            <td><button type="button" class="btn-remove-row" title="Remove row">&#x2715;</button></td>
-        `;
-        tbody.appendChild(tr);
-        renumberRows();
-    }
+        let html = '<option value="">-- Status --</option>';
+        for (const [key, label] of Object.entries(statuses)) {
+            html += `<option value="${key}">${label}</option>`;
+        }
+        return html;
+    })();
 
     function renumberRows() {
         tbody.querySelectorAll('tr.activity-row').forEach((tr, idx) => {
             tr.querySelector('.row-num').textContent = idx + 1;
             tr.querySelectorAll('[name]').forEach(el => {
-                el.name = el.name.replace(/\[\d+\]/, `[${idx}]`);
+                el.name = el.name.replace(/activities\[\d+\]/, `activities[${idx}]`);
             });
         });
+    }
+
+    function addRow() {
+        const i  = tbody.querySelectorAll('tr.activity-row').length;
+        const tr = document.createElement('tr');
+        tr.className = 'activity-row';
+        tr.innerHTML =
+            `<td class="row-num">${i + 1}</td>` +
+            `<td><input type="text" name="activities[${i}][activity]" placeholder="Describe the activity or issue" maxlength="500"></td>` +
+            `<td><select name="activities[${i}][status]">${statusOptions}</select></td>` +
+            `<td><input type="text" name="activities[${i}][action_needed]" placeholder="Action required" maxlength="500"></td>` +
+            `<td><input type="text" name="activities[${i}][notes]" placeholder="Additional notes" maxlength="500"></td>` +
+            `<td><button type="button" class="btn-remove-row" title="Remove row">&#x2715;</button></td>`;
+        tbody.appendChild(tr);
+        renumberRows();
     }
 
     if (addBtn) {

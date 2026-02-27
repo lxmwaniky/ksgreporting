@@ -14,24 +14,45 @@ Auth::requireLogin();
 $currentUser = Auth::user();
 $reportModel = new Report();
 
-$filterCampus = $_GET['campus'] ?? '';
-$filterDept = $_GET['department'] ?? '';
-$page = max(1, (int)($_GET['page'] ?? 1));
+$page    = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 20;
+$offset  = ($page - 1) * $perPage;
 
 $filters = [];
-if ($filterCampus) $filters['campus'] = $filterCampus;
-if ($filterDept) $filters['department'] = $filterDept;
 
-if ($currentUser['role'] === 'hod') {
-    $filters['campus'] = $currentUser['campus'];
-    $filters['department'] = $currentUser['department'] ?? '';
-} elseif ($currentUser['role'] === 'director') {
-    $filters['campus'] = $currentUser['campus'];
+switch ($currentUser['role']) {
+
+    case 'staff':
+        $filters['created_by'] = $currentUser['id'];
+        break;
+
+    case 'hod':
+        $filters['campus']     = $currentUser['campus'];
+        $filters['department'] = $currentUser['department'] ?? '';
+        if (!empty($_GET['week_start'])) {
+            $filters['week_start'] = $_GET['week_start'];
+        }
+        break;
+
+    case 'director':
+        $filters['campus'] = $currentUser['campus'];
+        if (!empty($_GET['department'])) {
+            $filters['department'] = $_GET['department'];
+        }
+        if (!empty($_GET['week_start'])) {
+            $filters['week_start'] = $_GET['week_start'];
+        }
+        break;
+
+    case 'admin':
+        if (!empty($_GET['campus']))     $filters['campus']     = $_GET['campus'];
+        if (!empty($_GET['department'])) $filters['department'] = $_GET['department'];
+        if (!empty($_GET['week_start'])) $filters['week_start'] = $_GET['week_start'];
+        break;
 }
 
-$reports = $reportModel->list($filters, $page, $perPage);
-$total = $reportModel->count($filters);
+$reports    = $reportModel->list($filters, $perPage, $offset);
+$total      = $reportModel->count($filters);
 $totalPages = (int) ceil($total / $perPage);
 
 require_once __DIR__ . '/../templates/header.php';

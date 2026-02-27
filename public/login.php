@@ -27,9 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $db   = Database::getInstance()->getPdo();
             $stmt = $db->prepare("
-                SELECT id, name, email, password_hash, campus, role 
-                FROM users 
-                WHERE email = :email AND is_active = 1 
+                SELECT id, name, email, password_hash, campus, role,
+                       department, hod_name, designation
+                FROM users
+                WHERE email = :email AND is_active = 1
                 LIMIT 1
             ");
             $stmt->execute([':email' => $email]);

@@ -11,7 +11,6 @@
     --radius:      4px;
     --shadow:      0 2px 8px rgba(0,0,0,.1);
 
-    /* aliases so all existing var() references resolve correctly */
     --ksg-gold:   #7f622c;
     --ksg-green:    #cbd300;
 }
@@ -611,8 +610,30 @@ fieldset legend {
     margin-top: .25rem;
 }
 
+.readonly-field {
+    padding: .45rem .6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #f5f0e8;
+    color: #444;
+    font-size: .9rem;
+    min-height: 2.1rem;
+    display: flex;
+    align-items: center;
+}
+
 .text-center { text-align: center; }
 .text-muted  { color: #888; font-size: .85rem; }
+
+.scope-notice {
+    background: #f5f0e8;
+    border-left: 4px solid var(--ksg-brown);
+    padding: .6rem 1rem;
+    font-size: .88rem;
+    color: #555;
+    margin-bottom: 1.25rem;
+    border-radius: 0 var(--radius) var(--radius) 0;
+}
 
 .pagination {
     display: flex;
@@ -908,6 +929,7 @@ fieldset legend {
 /* ── Print ───────────────────────────────────────────────── */
 
 @media print {
+    /* Hide all UI chrome */
     .site-header,
     nav,
     .btn,
@@ -924,16 +946,11 @@ fieldset legend {
 
     body {
         background: #fff;
-        font-size: 11pt;
-    }
-
-    .container {
-        box-shadow: none;
-        padding: 0;
+        font-size: 10pt;
         margin: 0;
-        max-width: 100%;
     }
 
+    /* Full width document */
     .report-page-wrap {
         margin: 0;
         padding: 0;
@@ -946,44 +963,67 @@ fieldset legend {
         padding: 0;
     }
 
-    .doc-header-title h1,
-    .doc-section-heading,
+    .container {
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+        max-width: 100%;
+    }
+
+    /* Repeat header and meta on every page */
+    .print-repeat-header {
+        display: block;
+    }
+
+    .print-repeat-meta {
+        display: table;
+    }
+
+    /* Table thead repeats automatically on page break */
+    .doc-activities-table thead {
+        display: table-header-group;
+    }
+
+    .doc-activities-table tbody tr {
+        page-break-inside: avoid;
+    }
+
+    /* Keep signatures together, always on same page */
+    .doc-signatures {
+        page-break-inside: avoid;
+        page-break-before: auto;
+    }
+
+    /* Keep authorisation heading with its content */
+    .doc-section-heading + .doc-signatures {
+        page-break-before: avoid;
+    }
+
+    /* Force colour backgrounds to print */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .doc-section-heading {
+        background: #7f622c !important;
+        color: #fff !important;
+    }
+
     .doc-sig-role {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        background: #7f622c !important;
+        color: #fff !important;
     }
 
     .doc-meta-table th,
     .doc-activities-table thead th,
     .doc-sig-table th {
         background: #f5f0e8 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .doc-section-heading {
-        background: #7f622c !important;
-        color: #fff !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .doc-sig-role {
-        background: #7f622c !important;
-        color: #fff !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .doc-signatures {
-        page-break-inside: avoid;
     }
 
     .activities-table th {
         background: #7f622c !important;
         color: #fff !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
     }
 
     .signatures-section,
@@ -993,8 +1033,20 @@ fieldset legend {
 
     .badge {
         border: 1px solid #333;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+    }
+
+    /* Document footer at bottom of every page */
+    .doc-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-top: 2px solid #7f622c;
+        padding: .4rem 1rem;
+        font-size: 8pt;
+        background: #fff;
+        display: flex;
+        justify-content: space-between;
     }
 }
 

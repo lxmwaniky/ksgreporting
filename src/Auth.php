@@ -50,6 +50,34 @@ class Auth
         $_SESSION['user']    = $user;
     }
 
+    
+    public static function refreshSession(): void
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            return;
+        }
+
+        try {
+            $db   = Database::getInstance()->getPdo();
+            $stmt = $db->prepare("
+                SELECT id, name, email, campus, role,
+                       department, hod_name, designation
+                FROM users
+                WHERE id = :id AND is_active = 1
+                LIMIT 1
+            ");
+            $stmt->execute([':id' => $userId]);
+            $user = $stmt->fetch();
+
+            if ($user) {
+                $_SESSION['user'] = $user;
+            }
+        } catch (\Exception $e) {
+            error_log('Session refresh error: ' . $e->getMessage());
+        }
+    }
+
     public static function logout(): void
     {
         $_SESSION = [];
