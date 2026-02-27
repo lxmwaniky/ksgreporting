@@ -11,19 +11,20 @@ use KSG\Report;
 Auth::startSession();
 Auth::requireLogin();
 
-$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-
-if (!$id) {
-    http_response_code(400);
-    die('Invalid report ID.');
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    $_SESSION['error'] = 'Invalid report ID';
+    header('Location: /index.php');
+    exit;
 }
 
+$reportId    = (int) $_GET['id'];
 $reportModel = new Report();
-$report      = $reportModel->findById($id);
+$report      = $reportModel->findById($reportId);
 
 if (!$report) {
-    http_response_code(404);
-    die('Report not found.');
+    $_SESSION['error'] = 'Report not found';
+    header('Location: /index.php');
+    exit;
 }
 
 require_once __DIR__ . '/../templates/header.php';

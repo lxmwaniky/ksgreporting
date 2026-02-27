@@ -12,9 +12,32 @@ class Report
 {
     private PDO $db;
 
+    private const CAMPUS_CODES = [
+        'nairobi' => 'NBO',
+        'mombasa' => 'MSA',
+        'matuga'  => 'MTG',
+        'embu'    => 'EBU',
+        'baringo' => 'BRG',
+    ];
+
     public function __construct()
     {
         $this->db = Database::getInstance()->getPdo();
+    }
+
+    public function generateReportCode(string $campus): string
+    {
+        $campusCode = self::CAMPUS_CODES[$campus] ?? strtoupper(substr($campus, 0, 3));
+
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) FROM reports WHERE campus = :campus
+        ");
+        $stmt->execute([':campus' => $campus]);
+        $count = (int) $stmt->fetchColumn();
+
+        $serial = str_pad((string) ($count + 1), 2, '0', STR_PAD_LEFT);
+
+        return "KSG/01/{$campusCode}/{$serial}";
     }
 
     public function create(array $data): int
@@ -24,21 +47,24 @@ class Report
         $this->db->beginTransaction();
 
         try {
+            $reportCode = $this->generateReportCode($data['campus']);
+
             $stmt = $this->db->prepare("
                 INSERT INTO reports 
-                    (campus, department, hod_name, reporting_week_start, reporting_week_end, 
+                    (report_code, campus, department, hod_name, reporting_week_start, reporting_week_end, 
                      report_date, prepared_by_name, prepared_by_designation, prepared_date,
                      reviewed_by_name, reviewed_by_designation, reviewed_date, created_by, created_at)
                 VALUES 
-                    (:campus, :department, :hod_name, :week_start, :week_end, 
+                    (:report_code, :campus, :department, :hod_name, :week_start, :week_end, 
                      :report_date, :prep_name, :prep_desig, :prep_date,
                      :rev_name, :rev_desig, :rev_date, :created_by, CURRENT_TIMESTAMP)
                 RETURNING id
             ");
 
             $currentUser = Auth::currentUser();
-            
+
             $stmt->execute([
+                ':report_code' => $reportCode,
                 ':campus'      => $data['campus'],
                 ':department'  => $data['department'],
                 ':hod_name'    => trim($data['hod_name']),
@@ -54,12 +80,12 @@ class Report
                 ':created_by'  => $currentUser['id'] ?? null,
             ]);
 
-            $result = $stmt->fetch();
+            $result   = $stmt->fetch();
             $reportId = (int) $result['id'];
-            
+
             $this->insertActivities($reportId, $data['activities']);
             $this->db->commit();
-            
+
             return $reportId;
 
         } catch (\Throwable $e) {
@@ -101,7 +127,7 @@ class Report
         }
 
         if (!empty($filters['department'])) {
-            $where[]              = 'department = :department';
+            $where[]               = 'department = :department';
             $params[':department'] = $filters['department'];
         }
 
@@ -110,7 +136,7 @@ class Report
             $params[':week_start'] = $filters['week_start'];
         }
 
-        $sql = "SELECT id, campus, department, hod_name, reporting_week_start, 
+        $sql = "SELECT id, report_code, campus, department, hod_name, reporting_week_start, 
                        reporting_week_end, report_date, prepared_by_name, created_at
                 FROM reports 
                 WHERE " . implode(' AND ', $where) . " 
@@ -118,11 +144,11 @@ class Report
                 LIMIT :limit OFFSET :offset";
 
         $stmt = $this->db->prepare($sql);
-        
+
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
         }
-        
+
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
@@ -141,7 +167,7 @@ class Report
         }
 
         if (!empty($filters['department'])) {
-            $where[]              = 'department = :department';
+            $where[]               = 'department = :department';
             $params[':department'] = $filters['department'];
         }
 
@@ -167,7 +193,7 @@ class Report
                 ':report_id'     => $reportId,
                 ':item_no'       => $index + 1,
                 ':activity'      => trim($act['activity']),
-                ':status'        => $act['status'] ?? 'pending',
+                ':status'        => !empty($act['status']) ? $act['status'] : 'pending',
                 ':action_needed' => trim($act['action_needed'] ?? ''),
                 ':notes'         => trim($act['notes'] ?? ''),
             ]);
@@ -177,8 +203,8 @@ class Report
     private function validateReportData(array $data): void
     {
         $required = [
-            'campus', 'department', 'hod_name', 'week_start', 'week_end', 
-            'report_date', 'prepared_by_name', 'prepared_by_designation'
+            'campus', 'department', 'hod_name', 'week_start', 'week_end',
+            'report_date', 'prepared_by_name', 'prepared_by_designation',
         ];
 
         foreach ($required as $field) {
