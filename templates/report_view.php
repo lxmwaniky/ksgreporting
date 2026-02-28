@@ -17,7 +17,7 @@ $reportCode = $report['report_code'] ?? 'N/A';
 
     <div class="report-document">
 
-        <!-- Document Header — repeats on every printed page via CSS -->
+        <!-- Document Header -->
         <div class="doc-header print-repeat-header">
             <img src="/assets/img/ksg-logo.png" alt="KSG Logo" class="doc-logo">
             <div class="doc-header-title">
@@ -101,7 +101,6 @@ $reportCode = $report['report_code'] ?? 'N/A';
                     <tr><th>Name</th><td><?= htmlspecialchars($report['prepared_by_name']) ?></td></tr>
                     <tr><th>Designation</th><td><?= htmlspecialchars($report['prepared_by_designation']) ?></td></tr>
                     <tr><th>Date</th><td><?= !empty($report['prepared_date']) ? date('d M Y', strtotime($report['prepared_date'])) : '&mdash;' ?></td></tr>
-                    <tr><th>Signature</th><td class="sig-space">&nbsp;</td></tr>
                 </table>
             </div>
 
@@ -111,15 +110,18 @@ $reportCode = $report['report_code'] ?? 'N/A';
                     <tr><th>Name</th><td><?= htmlspecialchars($report['reviewed_by_name'] ?? '') ?></td></tr>
                     <tr><th>Designation</th><td><?= htmlspecialchars($report['reviewed_by_designation'] ?? '') ?></td></tr>
                     <tr><th>Date</th><td><?= !empty($report['reviewed_date']) ? date('d M Y', strtotime($report['reviewed_date'])) : '&mdash;' ?></td></tr>
-                    <tr><th>Signature</th><td class="sig-space">&nbsp;</td></tr>
                 </table>
             </div>
         </div>
 
         <!-- Document Footer -->
         <div class="doc-footer">
-            <span>Kenya School of Government &mdash; Empowering the Public Service</span>
-            <span>Ref: <?= htmlspecialchars($reportCode) ?> &nbsp;|&nbsp; Generated: <?= date('d M Y, H:i') ?></span>
+            <img src="/assets/img/kebs.png" alt="KEBS" class="doc-footer-logo">
+            <div class="doc-footer-center">
+                <span>Kenya School of Government &mdash; Empowering the Public Service</span>
+                <span>Ref: <?= htmlspecialchars($reportCode) ?> &nbsp;|&nbsp; Generated: <?= date('d M Y, H:i', strtotime($report['created_at'])) ?></span>
+            </div>
+            <img src="/assets/img/vision2030.jpeg" alt="Vision 2030" class="doc-footer-logo">
         </div>
 
     </div>

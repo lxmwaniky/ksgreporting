@@ -1,5 +1,6 @@
 <?php
 
+date_default_timezone_set('Africa/Nairobi');
 define('APP_NAME', 'KSG Weekly Status Report');
 define('APP_VERSION', '1.0.0');
 

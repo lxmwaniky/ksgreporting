@@ -924,6 +924,23 @@ fieldset legend {
     border-top: 2px solid var(--ksg-brown);
     font-size: .78rem;
     color: #777;
+    gap: 1rem;
+}
+
+.doc-footer-logo {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.doc-footer-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: .2rem;
+    flex: 1;
 }
 
 /* ── Print ───────────────────────────────────────────────── */
@@ -1047,6 +1064,24 @@ fieldset legend {
         background: #fff;
         display: flex;
         justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .doc-footer-logo {
+        height: 36px;
+        width: auto;
+        object-fit: contain;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .doc-footer-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex: 1;
     }
 }
 
