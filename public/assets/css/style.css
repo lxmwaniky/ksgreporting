@@ -777,7 +777,7 @@ fieldset legend {
 }
 
 .doc-logo {
-    height: 80px;
+    height: 75px;
     flex-shrink: 0;
 }
 
@@ -957,7 +957,8 @@ fieldset legend {
     .no-print,
     .report-actions,
     .filter-bar,
-    .actions-bar {
+    .actions-bar,
+    .app-footer {
         display: none !important;
     }
 
@@ -986,6 +987,9 @@ fieldset legend {
         margin: 0;
         max-width: 100%;
     }
+
+    /* Reduced logo size in print */
+    .doc-logo { height: 70px !important; }
 
     /* Repeat header and meta on every page */
     .print-repeat-header {
