@@ -53,7 +53,7 @@ sudo systemctl restart apache2
 
 3.2 Step 2 — Clone the Repository
 cd /var/www/html
-git clone https://github.com/YOUR_USERNAME/ksg_reporting.git
+git clone https://github.com/Langat18/ksg_reporting.git
 cd ksg_reporting
 
 3.3 Step 3 — Install PHP Dependencies
