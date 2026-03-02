@@ -111,7 +111,7 @@ require_once __DIR__ . '/../templates/header.php';
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Update Director</button>
-                <a href="/directors.php" class="btn">Cancel</a>
+                <a href="./directors.php" class="btn">Cancel</a>
             </div>
         </form>
     </div>

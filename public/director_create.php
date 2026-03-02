@@ -134,7 +134,7 @@ require_once __DIR__ . '/../templates/header.php';
     <?php endif; ?>
 
     <div class="card">
-        <form method="POST" action="/director_create.php">
+        <form method="POST" action="./director_create.php">
             <input type="hidden" name="csrf_token" value="<?= Auth::generateCsrf() ?>">
 
             <div class="form-group">
@@ -177,7 +177,7 @@ require_once __DIR__ . '/../templates/header.php';
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Add Director</button>
-                <a href="/directors.php" class="btn">Cancel</a>
+                <a href="./directors.php" class="btn">Cancel</a>
             </div>
         </form>
     </div>

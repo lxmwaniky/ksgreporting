@@ -104,7 +104,7 @@ require_once __DIR__ . '/../templates/header.php';
     </div>
 
     <div class="filter-bar">
-        <form method="GET" action="/users.php" class="filters-form">
+        <form method="GET" action="./users.php" class="filters-form">
             <?php if ($currentUser['role'] === 'admin'): ?>
             <div class="filter-group">
                 <label for="filter_campus">Campus</label>
@@ -142,7 +142,7 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
 
             <button type="submit" class="btn btn-primary">Filter</button>
-            <a href="/users.php" class="btn btn-secondary">Clear</a>
+            <a href="./users.php" class="btn btn-secondary">Clear</a>
         </form>
     </div>
 

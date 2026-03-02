@@ -79,7 +79,7 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
 
             <button type="submit" class="btn btn-primary">Filter</button>
-            <a href="/email_logs.php" class="btn btn-secondary">Clear</a>
+            <a href="./email_logs.php" class="btn btn-secondary">Clear</a>
         </form>
     </div>
 

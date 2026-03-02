@@ -61,7 +61,7 @@ require_once __DIR__ . '/../templates/header.php';
 <div class="login-container">
     <div class="login-box">
         <div class="login-header">
-            <img src="/assets/img/ksg-logo.png" alt="KSG Logo" class="login-logo">
+            <img src="./assets/img/ksg-logo.png" alt="KSG Logo" class="login-logo">
             <h1>Kenya School of Government</h1>
             <h2>Weekly Status Reports</h2>
         </div>
@@ -72,7 +72,7 @@ require_once __DIR__ . '/../templates/header.php';
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="/login.php<?= !empty($_GET['redirect']) ? '?redirect=' . urlencode($_GET['redirect']) : '' ?>">
+        <form method="POST" action="./login.php<?= !empty($_GET['redirect']) ? '?redirect=' . urlencode($_GET['redirect']) : '' ?>">
             <div class="form-group">
                 <label for="email">Email Address</label>
                 <input type="email" name="email" id="email"

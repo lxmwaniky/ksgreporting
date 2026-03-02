@@ -9,10 +9,13 @@ class Auth
     public static function startSession(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            // Use /tmp for session storage to avoid permission issues
+            ini_set('session.save_path', '/tmp');
+            
             session_set_cookie_params([
                 'lifetime' => 0,
                 'path'     => '/',
-                'secure'   => true,
+                'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
                 'httponly' => true,
                 'samesite' => 'Strict',
             ]);
