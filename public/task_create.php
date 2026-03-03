@@ -16,7 +16,7 @@ Auth::requireLogin();
 $user = Auth::user();
 
 if (!in_array($user['role'], ['deputy_director', 'hod', 'admin'])) {
-    header('Location: /ksg_reporting/public/tasks.php');
+    header('Location: tasks.php');
     exit;
 }
 
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mailer = new Mailer();
             $mailer->sendTaskNotification($taskId, $data);
             $_SESSION['success'] = 'Task assigned successfully.';
-            header('Location: /ksg_reporting/public/tasks.php');
+            header('Location: tasks.php');
             exit;
         } catch (Exception $e) {
             $errors[] = 'Failed to create task. Please try again.';
@@ -66,7 +66,7 @@ require_once __DIR__ . '/../templates/header.php';
 <div class="page-header">
     <div class="page-header-content">
         <h1>Assign Task</h1>
-        <a href="/ksg_reporting/public/tasks.php" class="btn btn-secondary">Back to Tasks</a>
+        <a href="tasks.php" class="btn btn-secondary">Back to Tasks</a>
     </div>
 </div>
 
@@ -78,7 +78,7 @@ require_once __DIR__ . '/../templates/header.php';
 <?php endif; ?>
 
 <div class="card">
-    <form method="POST" action="/ksg_reporting/public/task_create.php">
+    <form method="POST" action="task_create.php">
 
         <div class="form-group">
             <label for="title">Task Title <span class="required">*</span></label>
@@ -131,7 +131,7 @@ require_once __DIR__ . '/../templates/header.php';
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Assign Task</button>
-            <a href="/ksg_reporting/public/tasks.php" class="btn btn-secondary">Cancel</a>
+            <a href="tasks.php" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </div>

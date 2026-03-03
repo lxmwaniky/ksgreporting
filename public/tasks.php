@@ -39,7 +39,7 @@ require_once __DIR__ . '/../templates/header.php';
     <div class="page-header-content">
         <h1>Tasks</h1>
         <?php if (in_array($role, ['deputy_director', 'hod', 'admin'])): ?>
-            <a href="/ksg_reporting/public/task_create.php" class="btn btn-primary">+ Assign Task</a>
+            <a href="task_create.php" class="btn btn-primary">+ Assign Task</a>
         <?php endif; ?>
     </div>
 </div>
@@ -95,7 +95,7 @@ require_once __DIR__ . '/../templates/header.php';
                         </span>
                     </td>
                     <td>
-                        <a href="/ksg_reporting/public/task_view.php?id=<?= (int)$task['id'] ?>" class="btn btn-sm btn-secondary">View</a>
+                        <a href="task_view.php?id=<?= (int)$task['id'] ?>" class="btn btn-sm btn-secondary">View</a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

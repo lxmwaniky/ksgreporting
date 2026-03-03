@@ -17,14 +17,14 @@ $taskObj = new Task();
 $id      = (int)($_GET['id'] ?? 0);
 
 if (!$id) {
-    header('Location: /ksg_reporting/public/tasks.php');
+    header('Location: tasks.php');
     exit;
 }
 
 $task = $taskObj->getById($id);
 
 if (!$task) {
-    header('Location: /ksg_reporting/public/tasks.php');
+    header('Location: tasks.php');
     exit;
 }
 
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status'])) {
     $status  = $_POST['status'];
     if (in_array($status, $allowed) && (int)$task['assigned_to'] === (int)$user['id']) {
         $taskObj->updateStatus($id, $status);
-        header('Location: /ksg_reporting/public/task_view.php?id=' . $id);
+        header('Location: task_view.php?id=' . $id);
         exit;
     }
 }
@@ -45,7 +45,7 @@ require_once __DIR__ . '/../templates/header.php';
 <div class="page-header">
     <div class="page-header-content">
         <h1>Task Details</h1>
-        <a href="/ksg_reporting/public/tasks.php" class="btn btn-secondary">Back to Tasks</a>
+        <a href="tasks.php" class="btn btn-secondary">Back to Tasks</a>
     </div>
 </div>
 
@@ -97,7 +97,7 @@ require_once __DIR__ . '/../templates/header.php';
     <?php if ((int)$task['assigned_to'] === (int)$user['id'] && $task['status'] !== 'completed'): ?>
     <div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.5rem;">
         <h3 style="margin-bottom:1rem;">Update Status</h3>
-        <form method="POST" action="/ksg_reporting/public/task_view.php?id=<?= $id ?>">
+        <form method="POST" action="task_view.php?id=<?= $id ?>">
             <div class="form-row">
                 <div class="form-group">
                     <select name="status">
