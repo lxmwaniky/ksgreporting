@@ -13,14 +13,51 @@ define('CAMPUSES', [
 ]);
 
 define('DEPARTMENTS', [
-    'administration_planning'  => 'Administration & Planning',
-    'ict'                      => 'ICT',
-    'finance'                  => 'Finance',
-    'human_resource'           => 'Human Resource',
-    'academic'                 => 'Academic Affairs',
-    'procurement'              => 'Procurement',
-    'research'                 => 'Research & Consultancy',
-    'library'                  => 'Library Services',
+    'ict'                    => 'ICT',
+    'hospitality'            => 'Hospitality',
+    'training'               => 'Training',
+    'administration'         => 'Administration',
+    'finance_accounting'     => 'Finance & Accounting',
+    'research_consultancy'   => 'Research & Consultancy',
+    'procurement'            => 'Procurement',
+    'human_resource'         => 'Human Resource',
+]);
+
+define('SECTIONS', [
+    'ict'                => [],
+    'hospitality'        => [
+        'catering'       => 'Catering Section',
+        'hospitality'    => 'Hospitality Section',
+    ],
+    'training'           => [
+        'library'           => 'Library Section',
+        'examinations'      => 'Examinations Section',
+        'business_dev'      => 'Business Development Section',
+        'admissions'        => 'Admissions Section',
+    ],
+    'administration'     => [
+        'security'      => 'Security Section',
+        'maintenance'   => 'Maintenance Section',
+    ],
+    'finance_accounting' => [
+        'accounting'    => 'Accounting Section',
+        'finance'       => 'Finance Section',
+    ],
+    'research_consultancy' => [],
+    'procurement'          => [],
+    'human_resource'       => [
+        'registry'          => 'Registry Section',
+        'communication'     => 'Communication Section',
+        'telephone_exchange' => 'Telephone Exchange Section',
+    ],
+]);
+
+define('ROLES', [
+    'staff'            => 'Staff',
+    'hod'              => 'HoD / HoS / Team Leader',
+    'deputy_director'  => 'Deputy Director',
+    'director'         => 'Director',
+    'admin'            => 'Administrator',
 ]);
 
 define('STATUSES', [
@@ -33,7 +70,13 @@ define('STATUSES', [
     'cancelled'   => 'Cancelled',
 ]);
 
+define('TASK_STATUSES', [
+    'pending'     => 'Pending',
+    'in_progress' => 'In Progress',
+    'completed'   => 'Completed',
+    'overdue'     => 'Overdue',
+]);
+
 define('MAX_ACTIVITIES', 10);
 define('DB_DATE_FORMAT', 'Y-m-d');
 define('DISPLAY_DATE_FORMAT', 'd M Y');
-
