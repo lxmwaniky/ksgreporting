@@ -78,7 +78,7 @@ require_once __DIR__ . '/../templates/header.php';
                     <td><?= $i + 1 ?></td>
                     <td><?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
-                        <?= htmlspecialchars(DEPARTMENTS[$task['department']] ?? $task['department'], ENT_QUOTES, 'UTF-8') ?>
+                        <?= htmlspecialchars(DEPARTMENTS[$task['department']] ?? $task['department'] ?? '—', ENT_QUOTES, 'UTF-8') ?>
                         <?php if (!empty($task['section'])): ?>
                             <br><small><?= htmlspecialchars(SECTIONS[$task['department']][$task['section']] ?? $task['section'], ENT_QUOTES, 'UTF-8') ?></small>
                         <?php endif; ?>
