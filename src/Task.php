@@ -25,7 +25,7 @@ class Task
             ':description' => trim($data['description']),
             ':assigned_by' => $data['assigned_by'],
             ':assigned_to' => $data['assigned_to'],
-            ':department'  => $data['department'],
+            ':department'  => $data['department'] ?? null,
             ':section'     => $data['section'] ?? null,
             ':campus'      => $data['campus'],
             ':deadline'    => $data['deadline'],
@@ -78,40 +78,46 @@ class Task
         return $stmt->fetchAll();
     }
 
-    public function getHodsInCampus(string $campus): array
+    public function getAssignees(string $role, string $campus, ?string $department = null): array
     {
-        $stmt = $this->db->prepare("
-            SELECT id, name, email, role, department, designation
-            FROM users
-            WHERE campus = :campus
-              AND is_active = 1
-              AND role = 'hod'
-            ORDER BY department, name ASC
-        ");
-        $stmt->execute([':campus' => $campus]);
-        return $stmt->fetchAll();
-    }
+        if ($role === 'director') {
+            $stmt = $this->db->prepare("
+                SELECT id, name, email, role, department, designation
+                FROM users
+                WHERE campus = :campus AND role = 'deputy_director' AND is_active = 1
+                ORDER BY name ASC
+            ");
+            $stmt->execute([':campus' => $campus]);
 
-    public function getStaffInDepartment(string $campus, string $department): array
-    {
-        $stmt = $this->db->prepare("
-            SELECT id, name, email, role, designation
-            FROM users
-            WHERE campus = :campus
-              AND department = :department
-              AND is_active = 1
-              AND role IN ('staff', 'hod')
-            ORDER BY name ASC
-        ");
-        $stmt->execute([':campus' => $campus, ':department' => $department]);
+        } elseif ($role === 'deputy_director') {
+            $stmt = $this->db->prepare("
+                SELECT id, name, email, role, department, designation
+                FROM users
+                WHERE campus = :campus AND role = 'hod' AND is_active = 1
+                ORDER BY department, name ASC
+            ");
+            $stmt->execute([':campus' => $campus]);
+
+        } elseif ($role === 'hod') {
+            $stmt = $this->db->prepare("
+                SELECT id, name, email, role, department, designation
+                FROM users
+                WHERE campus = :campus AND department = :department
+                  AND role = 'staff' AND is_active = 1
+                ORDER BY name ASC
+            ");
+            $stmt->execute([':campus' => $campus, ':department' => $department]);
+
+        } else {
+            return [];
+        }
+
         return $stmt->fetchAll();
     }
 
     public function updateStatus(int $id, string $status): bool
     {
-        $stmt = $this->db->prepare("
-            UPDATE tasks SET status = :status WHERE id = :id
-        ");
+        $stmt = $this->db->prepare("UPDATE tasks SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
         return $stmt->execute([':status' => $status, ':id' => $id]);
     }
 }
