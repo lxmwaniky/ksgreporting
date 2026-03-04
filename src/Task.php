@@ -71,10 +71,10 @@ class Task
             $stmt = $this->db->prepare("
                 SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
                 FROM tasks t
-                LEFT JOIN users u ON t.assigned_to = u.id
+                INNER JOIN users u ON t.assigned_to = u.id
                 WHERE t.assigned_by = :user_id
-                  AND t.campus = :campus
-                  AND t.department = :department
+                  AND u.campus = :campus
+                  AND u.department = :department
                   AND u.role = 'staff'
                 ORDER BY t.deadline ASC, t.created_at DESC
             ");
@@ -88,9 +88,9 @@ class Task
             $stmt = $this->db->prepare("
                 SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
                 FROM tasks t
-                LEFT JOIN users u ON t.assigned_to = u.id
+                INNER JOIN users u ON t.assigned_to = u.id
                 WHERE t.assigned_by = :user_id
-                  AND t.campus = :campus
+                  AND u.campus = :campus
                   AND u.role = 'hod'
                 ORDER BY t.deadline ASC, t.created_at DESC
             ");
@@ -103,9 +103,9 @@ class Task
             $stmt = $this->db->prepare("
                 SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
                 FROM tasks t
-                LEFT JOIN users u ON t.assigned_to = u.id
+                INNER JOIN users u ON t.assigned_to = u.id
                 WHERE t.assigned_by = :user_id
-                  AND t.campus = :campus
+                  AND u.campus = :campus
                   AND u.role = 'deputy_director'
                 ORDER BY t.deadline ASC, t.created_at DESC
             ");
