@@ -12,23 +12,25 @@ use KSG\Task;
 Auth::startSession();
 Auth::requireLogin();
 
-$user    = Auth::user();
-$taskObj = new Task();
-$role    = $user['role'];
+$user       = Auth::user();
+$taskObj    = new Task();
+$role       = $user['role'];
+$campus     = $user['campus'];
+$department = $user['department'] ?? null;
 
 if ($role === 'staff') {
-    $tasks = $taskObj->getAssignedTo((int)$user['id']);
+    $tasks = $taskObj->getAssignedTo((int)$user['id'], $role, $campus, $department);
     $view  = 'assigned_to_me';
 } elseif ($role === 'hod') {
     $view  = $_GET['view'] ?? 'assigned_to_me';
     $tasks = $view === 'assigned_by_me'
-        ? $taskObj->getAssignedBy((int)$user['id'])
-        : $taskObj->getAssignedTo((int)$user['id']);
+        ? $taskObj->getAssignedBy((int)$user['id'], $role, $campus, $department)
+        : $taskObj->getAssignedTo((int)$user['id'], $role, $campus, $department);
 } else {
     $view  = $_GET['view'] ?? 'assigned_by_me';
     $tasks = $view === 'assigned_to_me'
-        ? $taskObj->getAssignedTo((int)$user['id'])
-        : $taskObj->getAssignedBy((int)$user['id']);
+        ? $taskObj->getAssignedTo((int)$user['id'], $role, $campus, $department)
+        : $taskObj->getAssignedBy((int)$user['id'], $role, $campus, $department);
 }
 
 $pageTitle = 'Tasks';
@@ -38,7 +40,7 @@ require_once __DIR__ . '/../templates/header.php';
 <div class="page-header">
     <div class="page-header-content">
         <h1>Tasks</h1>
-        <?php if (in_array($role, ['deputy_director', 'hod', 'admin'])): ?>
+        <?php if (in_array($role, ['deputy_director', 'hod', 'admin', 'director'])): ?>
             <a href="task_create.php" class="btn btn-primary">+ Assign Task</a>
         <?php endif; ?>
     </div>

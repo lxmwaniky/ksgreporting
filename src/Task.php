@@ -52,7 +52,7 @@ class Task
         return $row ?: null;
     }
 
-    public function getAssignedTo(int $userId): array
+    public function getAssignedTo(int $userId, string $role, string $campus, ?string $department = null): array
     {
         $stmt = $this->db->prepare("
             SELECT t.*, u.name AS assigned_by_name, u.role AS assigned_by_role
@@ -65,16 +65,66 @@ class Task
         return $stmt->fetchAll();
     }
 
-    public function getAssignedBy(int $userId): array
+    public function getAssignedBy(int $userId, string $role, string $campus, ?string $department = null): array
     {
-        $stmt = $this->db->prepare("
-            SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
-            FROM tasks t
-            LEFT JOIN users u ON t.assigned_to = u.id
-            WHERE t.assigned_by = :user_id
-            ORDER BY t.deadline ASC, t.created_at DESC
-        ");
-        $stmt->execute([':user_id' => $userId]);
+        if ($role === 'hod') {
+            $stmt = $this->db->prepare("
+                SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
+                FROM tasks t
+                LEFT JOIN users u ON t.assigned_to = u.id
+                WHERE t.assigned_by = :user_id
+                  AND t.campus = :campus
+                  AND t.department = :department
+                  AND u.role = 'staff'
+                ORDER BY t.deadline ASC, t.created_at DESC
+            ");
+            $stmt->execute([
+                ':user_id'    => $userId,
+                ':campus'     => $campus,
+                ':department' => $department,
+            ]);
+
+        } elseif ($role === 'deputy_director') {
+            $stmt = $this->db->prepare("
+                SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
+                FROM tasks t
+                LEFT JOIN users u ON t.assigned_to = u.id
+                WHERE t.assigned_by = :user_id
+                  AND t.campus = :campus
+                  AND u.role = 'hod'
+                ORDER BY t.deadline ASC, t.created_at DESC
+            ");
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':campus'  => $campus,
+            ]);
+
+        } elseif ($role === 'director') {
+            $stmt = $this->db->prepare("
+                SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
+                FROM tasks t
+                LEFT JOIN users u ON t.assigned_to = u.id
+                WHERE t.assigned_by = :user_id
+                  AND t.campus = :campus
+                  AND u.role = 'deputy_director'
+                ORDER BY t.deadline ASC, t.created_at DESC
+            ");
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':campus'  => $campus,
+            ]);
+
+        } else {
+            $stmt = $this->db->prepare("
+                SELECT t.*, u.name AS assigned_to_name, u.role AS assigned_to_role
+                FROM tasks t
+                LEFT JOIN users u ON t.assigned_to = u.id
+                WHERE t.assigned_by = :user_id
+                ORDER BY t.deadline ASC, t.created_at DESC
+            ");
+            $stmt->execute([':user_id' => $userId]);
+        }
+
         return $stmt->fetchAll();
     }
 
