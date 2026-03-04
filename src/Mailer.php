@@ -43,25 +43,43 @@ class Mailer
             return false;
         }
 
-        $director = $this->getCampusDirector($report['campus']);
-        if (!$director) {
-            error_log("No director found for campus: {$report['campus']}");
-            return false;
-        }
-
         $subject = sprintf(
             "Weekly Status Report - %s - %s",
             CAMPUSES[$report['campus']] ?? $report['campus'],
             DEPARTMENTS[$report['department']] ?? $report['department']
         );
 
-        $sent = $this->sendEmail(
-            $director['director_email'],
-            $director['director_name'],
-            $subject,
-            $this->buildReportEmail($report),
-            $reportId
-        );
+        $body = $this->buildReportEmail($report);
+
+        if ($report['creator_role'] === 'staff') {
+            $hod = $this->getCampusHod($report['campus'], $report['department']);
+            if (!$hod) {
+                error_log("No HoD found for campus: {$report['campus']}, department: {$report['department']}");
+                return false;
+            }
+            $sent = $this->sendEmail($hod['email'], $hod['name'], $subject, $body, $reportId);
+
+        } elseif ($report['creator_role'] === 'hod') {
+            $deputy = $this->getCampusDeputyDirector($report['campus']);
+            if (!$deputy) {
+                error_log("No deputy director found for campus: {$report['campus']}");
+                return false;
+            }
+            $director = $this->getCampusDirector($report['campus']);
+            $bcc  = $director ? [['email' => $director['director_email'], 'name' => $director['director_name']]] : [];
+            $sent = $this->sendEmailWithBcc($deputy['email'], $deputy['name'], $subject, $body, $bcc, $reportId);
+
+        } elseif ($report['creator_role'] === 'deputy_director') {
+            $director = $this->getCampusDirector($report['campus']);
+            if (!$director) {
+                error_log("No director found for campus: {$report['campus']}");
+                return false;
+            }
+            $sent = $this->sendEmail($director['director_email'], $director['director_name'], $subject, $body, $reportId);
+
+        } else {
+            return false;
+        }
 
         if ($sent) {
             $this->markReportAsSent($reportId);
@@ -238,7 +256,7 @@ HTML;
     private function getReportDetails(int $reportId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT r.*, u.name as creator_name, u.email as creator_email
+            SELECT r.*, u.name as creator_name, u.email as creator_email, u.role as creator_role
             FROM reports r
             LEFT JOIN users u ON r.created_by = u.id
             WHERE r.id = :id
@@ -266,6 +284,62 @@ HTML;
         ");
         $stmt->execute([':campus' => $campus]);
         return $stmt->fetch() ?: null;
+    }
+
+    private function getCampusDeputyDirector(string $campus): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, name, email FROM users
+            WHERE campus = :campus AND role = 'deputy_director' AND is_active = 1
+            LIMIT 1
+        ");
+        $stmt->execute([':campus' => $campus]);
+        return $stmt->fetch() ?: null;
+    }
+
+    private function sendEmailWithBcc(
+        string $toEmail,
+        string $toName,
+        string $subject,
+        string $body,
+        array $bcc,
+        int $reportId
+    ): bool {
+        $this->logEmailAttempt($reportId, $toEmail, $toName, $subject);
+
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->Host       = $this->config['host'];
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $this->config['username'];
+            $mail->Password   = $this->config['password'];
+            $mail->SMTPSecure = $this->config['encryption'];
+            $mail->Port       = $this->config['port'];
+
+            $mail->setFrom($this->config['from_email'], $this->config['from_name']);
+            $mail->addAddress($toEmail, $toName);
+            $mail->addReplyTo($this->config['from_email'], $this->config['from_name']);
+
+            foreach ($bcc as $b) {
+                $mail->addBCC($b['email'], $b['name']);
+            }
+
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+
+            $mail->send();
+            $this->updateEmailLog($reportId, $toEmail, 'sent');
+            return true;
+
+        } catch (Exception $e) {
+            error_log("Email sending failed: {$mail->ErrorInfo}");
+            $this->updateEmailLog($reportId, $toEmail, 'failed', $mail->ErrorInfo);
+            return false;
+        }
     }
 
     private function buildReportEmail(array $report): string

@@ -29,12 +29,9 @@ class Report
     {
         $campusCode = self::CAMPUS_CODES[$campus] ?? strtoupper(substr($campus, 0, 3));
 
-        $stmt = $this->db->prepare("
-            SELECT COUNT(*) FROM reports WHERE campus = :campus
-        ");
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM reports WHERE campus = :campus");
         $stmt->execute([':campus' => $campus]);
-        $count = (int) $stmt->fetchColumn();
-
+        $count  = (int) $stmt->fetchColumn();
         $serial = str_pad((string) ($count + 1), 2, '0', STR_PAD_LEFT);
 
         return "KSG/01/{$campusCode}/{$serial}";
@@ -43,25 +40,23 @@ class Report
     public function create(array $data): int
     {
         $this->validateReportData($data);
-
         $this->db->beginTransaction();
 
         try {
-            $reportCode = $this->generateReportCode($data['campus']);
+            $reportCode  = $this->generateReportCode($data['campus']);
+            $currentUser = Auth::currentUser();
 
             $stmt = $this->db->prepare("
-                INSERT INTO reports 
-                    (report_code, campus, department, hod_name, reporting_week_start, reporting_week_end, 
+                INSERT INTO reports
+                    (report_code, campus, department, hod_name, reporting_week_start, reporting_week_end,
                      report_date, prepared_by_name, prepared_by_designation, prepared_date,
                      reviewed_by_name, reviewed_by_designation, reviewed_date, created_by, created_at)
-                VALUES 
-                    (:report_code, :campus, :department, :hod_name, :week_start, :week_end, 
+                VALUES
+                    (:report_code, :campus, :department, :hod_name, :week_start, :week_end,
                      :report_date, :prep_name, :prep_desig, :prep_date,
                      :rev_name, :rev_desig, :rev_date, :created_by, CURRENT_TIMESTAMP)
                 RETURNING id
             ");
-
-            $currentUser = Auth::currentUser();
 
             $stmt->execute([
                 ':report_code' => $reportCode,
@@ -74,15 +69,13 @@ class Report
                 ':prep_name'   => trim($data['prepared_by_name']),
                 ':prep_desig'  => trim($data['prepared_by_designation']),
                 ':prep_date'   => $data['prepared_date'] ?? date('Y-m-d'),
-                ':rev_name'    => !empty($data['reviewed_by_name']) ? trim($data['reviewed_by_name']) : null,
+                ':rev_name'    => !empty($data['reviewed_by_name'])        ? trim($data['reviewed_by_name'])        : null,
                 ':rev_desig'   => !empty($data['reviewed_by_designation']) ? trim($data['reviewed_by_designation']) : null,
                 ':rev_date'    => $data['reviewed_date'] ?? null,
                 ':created_by'  => $currentUser['id'] ?? null,
             ]);
 
-            $result   = $stmt->fetch();
-            $reportId = (int) $result['id'];
-
+            $reportId = (int) $stmt->fetch()['id'];
             $this->insertActivities($reportId, $data['activities']);
             $this->db->commit();
 
@@ -106,9 +99,7 @@ class Report
         }
 
         $stmt = $this->db->prepare("
-            SELECT * FROM report_activities 
-            WHERE report_id = :id 
-            ORDER BY item_no ASC
+            SELECT * FROM report_activities WHERE report_id = :id ORDER BY item_no ASC
         ");
         $stmt->execute([':id' => $id]);
         $report['activities'] = $stmt->fetchAll();
@@ -136,9 +127,14 @@ class Report
             $params[':week_start'] = $filters['week_start'];
         }
 
+        if (!empty($filters['week_end'])) {
+            $where[]             = 'reporting_week_end <= :week_end';
+            $params[':week_end'] = $filters['week_end'];
+        }
+
         if (!empty($filters['created_by'])) {
-            $where[]                 = 'created_by = :created_by';
-            $params[':created_by']   = $filters['created_by'];
+            $where[]               = 'created_by = :created_by';
+            $params[':created_by'] = $filters['created_by'];
         }
 
         $sql = "SELECT id, report_code, campus, department, hod_name, reporting_week_start,
@@ -154,7 +150,7 @@ class Report
             $stmt->bindValue($key, $value);
         }
 
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -174,6 +170,16 @@ class Report
         if (!empty($filters['department'])) {
             $where[]               = 'department = :department';
             $params[':department'] = $filters['department'];
+        }
+
+        if (!empty($filters['week_start'])) {
+            $where[]               = 'reporting_week_start >= :week_start';
+            $params[':week_start'] = $filters['week_start'];
+        }
+
+        if (!empty($filters['week_end'])) {
+            $where[]             = 'reporting_week_end <= :week_end';
+            $params[':week_end'] = $filters['week_end'];
         }
 
         if (!empty($filters['created_by'])) {

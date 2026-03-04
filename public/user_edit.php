@@ -47,18 +47,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die('Invalid security token.');
     }
 
-    $name        = trim($_POST['name'] ?? '');
-    $email       = trim($_POST['email'] ?? '');
-    $campus      = $_POST['campus'] ?? '';
-    $role        = $_POST['role'] ?? '';
-    $department  = $_POST['department'] ?? '';
-    $hodName     = trim($_POST['hod_name'] ?? '');
-    $designation = trim($_POST['designation'] ?? '');
-    $password    = $_POST['password'] ?? '';
+    $name            = trim($_POST['name'] ?? '');
+    $email           = trim($_POST['email'] ?? '');
+    $campus          = $_POST['campus'] ?? '';
+    $role            = $_POST['role'] ?? '';
+    $department      = $_POST['department'] ?? '';
+    $hodName         = trim($_POST['hod_name'] ?? '');
+    $designation     = trim($_POST['designation'] ?? '');
+    $password        = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
 
     $allowedRoles = $currentUser['role'] === 'admin'
-        ? ['staff', 'hod', 'director', 'admin']
+        ? ['staff', 'hod', 'deputy_director', 'director', 'admin']
         : ['staff', 'hod'];
 
     if (empty($name) || empty($email) || empty($campus) || empty($role)) {
@@ -127,8 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                 }
 
-                // If the edited user is the currently logged-in user,
-                // refresh the session so profile fields take effect immediately
                 if ((int)$userId === (int)$currentUser['id']) {
                     Auth::refreshSession();
                 }
@@ -222,12 +220,17 @@ require_once __DIR__ . '/../templates/header.php';
                 <div class="form-group">
                     <label for="role">Role <span class="required">*</span></label>
                     <select name="role" id="role" required>
-                        <option value="staff" <?= ($_POST['role'] ?? $user['role']) === 'staff' ? 'selected' : '' ?>>Staff</option>
-                        <option value="hod" <?= ($_POST['role'] ?? $user['role']) === 'hod' ? 'selected' : '' ?>>HoD</option>
-                        <?php if ($currentUser['role'] === 'admin'): ?>
-                            <option value="director" <?= ($_POST['role'] ?? $user['role']) === 'director' ? 'selected' : '' ?>>Director</option>
-                            <option value="admin" <?= ($_POST['role'] ?? $user['role']) === 'admin' ? 'selected' : '' ?>>Admin</option>
-                        <?php endif; ?>
+                        <?php
+                        $allowedRoles = $currentUser['role'] === 'admin'
+                            ? ['staff', 'hod', 'deputy_director', 'director', 'admin']
+                            : ['staff', 'hod'];
+                        foreach ($allowedRoles as $roleKey):
+                        ?>
+                            <option value="<?= $roleKey ?>"
+                                <?= ($_POST['role'] ?? $user['role']) === $roleKey ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(ROLES[$roleKey], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             </div>
