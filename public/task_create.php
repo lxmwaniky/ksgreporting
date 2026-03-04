@@ -26,12 +26,22 @@ $errors    = [];
 $assignees = $taskObj->getAssignees($role, $user['campus'], $user['department'] ?? null);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $assignedTo = (int)($_POST['assigned_to'] ?? 0);
+
+    if ($role === 'hod') {
+        $dept = $user['department'];
+    } elseif ($role === 'director') {
+        $dept = null;
+    } else {
+        $dept = !empty($_POST['department']) ? $_POST['department'] : null;
+    }
+
     $data = [
         'title'       => trim($_POST['title'] ?? ''),
         'description' => trim($_POST['description'] ?? ''),
-        'assigned_to' => (int)($_POST['assigned_to'] ?? 0),
+        'assigned_to' => $assignedTo,
         'assigned_by' => (int)$user['id'],
-        'department'  => $_POST['department'] ?? null,
+        'department'  => $dept,
         'section'     => !empty($_POST['section']) ? $_POST['section'] : null,
         'campus'      => $user['campus'],
         'deadline'    => $_POST['deadline'] ?? '',
@@ -113,6 +123,13 @@ require_once __DIR__ . '/../templates/header.php';
                     <option value="">-- Select Section --</option>
                 </select>
             </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($role === 'hod'): ?>
+        <div class="form-group">
+            <label>Department</label>
+            <input type="text" value="<?= htmlspecialchars(DEPARTMENTS[$user['department']] ?? $user['department'], ENT_QUOTES, 'UTF-8') ?>" disabled>
         </div>
         <?php endif; ?>
 
