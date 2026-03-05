@@ -14,7 +14,8 @@ CREATE TABLE users (
     email               VARCHAR(200)  NOT NULL UNIQUE,
     password_hash       VARCHAR(255)  NOT NULL,
     campus              VARCHAR(50)   NOT NULL,
-    role                VARCHAR(20)   NOT NULL DEFAULT 'staff' CHECK (role IN ('staff', 'hod', 'admin')),
+    role                VARCHAR(20)   NOT NULL DEFAULT 'staff' CHECK (role IN ('staff', 'hod', 'deputy_director', 'director', 'admin')),
+    department          VARCHAR(100),
     is_active           SMALLINT      NOT NULL DEFAULT 1,
     created_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -30,6 +31,7 @@ CREATE TABLE campus_directors (
     director_name   VARCHAR(150)  NOT NULL,
     director_email  VARCHAR(200)  NOT NULL,
     is_active       SMALLINT      NOT NULL DEFAULT 1,
+    user_id         INTEGER       REFERENCES users(id) ON DELETE SET NULL,
     created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -75,6 +77,25 @@ CREATE TABLE report_activities (
 
 CREATE INDEX idx_report_activities_report ON report_activities(report_id);
 
+CREATE TABLE tasks (
+    id              SERIAL PRIMARY KEY,
+    title           VARCHAR(255)  NOT NULL,
+    description     TEXT,
+    assigned_by     INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+    assigned_to     INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+    campus          VARCHAR(50)   NOT NULL,
+    department      VARCHAR(100),
+    deadline        DATE,
+    status          VARCHAR(20)   NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+    created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
+CREATE INDEX idx_tasks_assigned_by ON tasks(assigned_by);
+CREATE INDEX idx_tasks_campus ON tasks(campus);
+CREATE INDEX idx_tasks_status ON tasks(status);
+
 CREATE TABLE email_logs (
     id              SERIAL PRIMARY KEY,
     report_id       INTEGER       NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
@@ -107,12 +128,8 @@ CREATE TRIGGER update_campus_directors_updated_at BEFORE UPDATE ON campus_direct
 CREATE TRIGGER update_reports_updated_at BEFORE UPDATE ON reports
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-INSERT INTO campus_directors (campus, director_name, director_email, is_active) VALUES
-('nairobi',  'Dr. Jane Mwangi',      'director.nairobi@ksg.ac.ke',  1),
-('mombasa',  'Eng. Maurice Odida',     'clement.langat@ksg.ac.ke',  1),
-('matuga',   'Dr. Grace Odhiambo',   'director.matuga@ksg.ac.ke',   1),
-('embu',     'Mr. Peter Kamau',      'director.embu@ksg.ac.ke',     1),
-('baringo',  'Ms. Mary Chebet',      'director.baringo@ksg.ac.ke',  1);
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 INSERT INTO users (name, email, password_hash, campus, role) VALUES
 ('System Administrator', 'admin@ksg.ac.ke', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'nairobi', 'admin');

@@ -37,11 +37,11 @@ class Task
     {
         $stmt = $this->db->prepare("
             SELECT t.*,
-                   u1.name AS assigned_by_name,
-                   u1.role AS assigned_by_role,
-                   u2.name AS assigned_to_name,
+                   u1.name  AS assigned_by_name,
+                   u1.role  AS assigned_by_role,
+                   u2.name  AS assigned_to_name,
                    u2.email AS assigned_to_email,
-                   u2.role AS assigned_to_role
+                   u2.role  AS assigned_to_role
             FROM tasks t
             LEFT JOIN users u1 ON t.assigned_by = u1.id
             LEFT JOIN users u2 ON t.assigned_to = u2.id
@@ -167,7 +167,45 @@ class Task
 
     public function updateStatus(int $id, string $status): bool
     {
-        $stmt = $this->db->prepare("UPDATE tasks SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+        $stmt = $this->db->prepare("
+            UPDATE tasks SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id
+        ");
         return $stmt->execute([':status' => $status, ':id' => $id]);
+    }
+
+    /**
+     * Fetch all tasks that are past their deadline and not yet completed,
+     * cancelled, or already marked overdue. Used by the cron job.
+     */
+    public function getOverdueCandidates(): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT t.*,
+                   u1.name  AS assigned_by_name,
+                   u1.email AS assigned_by_email,
+                   u2.name  AS assigned_to_name,
+                   u2.email AS assigned_to_email
+            FROM tasks t
+            LEFT JOIN users u1 ON t.assigned_by = u1.id
+            LEFT JOIN users u2 ON t.assigned_to = u2.id
+            WHERE t.deadline < CURRENT_DATE
+              AND t.status NOT IN ('completed', 'cancelled', 'overdue')
+              AND t.overdue_notified = 0
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Mark a task as overdue and flag that the notification has been sent.
+     */
+    public function markOverdue(int $id): bool
+    {
+        $stmt = $this->db->prepare("
+            UPDATE tasks
+            SET status = 'overdue', overdue_notified = 1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        ");
+        return $stmt->execute([':id' => $id]);
     }
 }

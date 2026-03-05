@@ -52,6 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($data['assigned_to'])) $errors[] = 'Please select who to assign this task to.';
     if (empty($data['deadline']))    $errors[] = 'Deadline is required.';
 
+    if (!empty($assignedTo)) {
+        $allowedIds = array_column($assignees, 'id');
+        if (!in_array($assignedTo, array_map('intval', $allowedIds))) {
+            $errors[] = 'Selected assignee is not valid for your role and department.';
+        }
+    }
+
     if (empty($errors)) {
         try {
             $taskId = $taskObj->create($data);

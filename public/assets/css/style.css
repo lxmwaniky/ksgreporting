@@ -184,19 +184,21 @@ input:focus, select:focus, textarea:focus {
     white-space: nowrap;
 }
 
-.badge-in_progress  { background: #fff8cc; color: #5a4a00; }
-.badge-completed    { background: #eaf5d3; color: #2a4a00; }
-.badge-delayed      { background: #f8d7da; color: #842029; }
-.badge-on_track     { background: #e8f0d4; color: #3a4a00; }
-.badge-pending      { background: #f0ede6; color: #5a4a2a; }
-.badge-scheduled    { background: #f5f0e0; color: #5a4000; }
-.badge-cancelled    { background: #f5e6d8; color: #6a3a00; }
-.badge-staff        { background: #f5f0e8; color: #5a4020; }
-.badge-hod          { background: #f8f2d8; color: #5a4200; }
-.badge-director     { background: #e8f5d8; color: #2a4a00; }
-.badge-admin        { background: #f5e8d8; color: var(--ksg-brown); }
-.badge-success      { background: #eaf5d3; color: #2a4a00; }
-.badge-danger       { background: #f8d7da; color: #842029; }
+.badge-in_progress      { background: #fff8cc; color: #5a4a00; }
+.badge-completed        { background: #eaf5d3; color: #2a4a00; }
+.badge-delayed          { background: #f8d7da; color: #842029; }
+.badge-on_track         { background: #e8f0d4; color: #3a4a00; }
+.badge-pending          { background: #f0ede6; color: #5a4a2a; }
+.badge-scheduled        { background: #f5f0e0; color: #5a4000; }
+.badge-cancelled        { background: #f5e6d8; color: #6a3a00; }
+.badge-overdue          { background: #f8d7da; color: #842029; }
+.badge-staff            { background: #f5f0e8; color: #5a4020; }
+.badge-hod              { background: #f8f2d8; color: #5a4200; }
+.badge-deputy_director  { background: #e8f0ff; color: #1a3a6a; }
+.badge-director         { background: #e8f5d8; color: #2a4a00; }
+.badge-admin            { background: #f5e8d8; color: var(--ksg-brown); }
+.badge-success          { background: #eaf5d3; color: #2a4a00; }
+.badge-danger           { background: #f8d7da; color: #842029; }
 
 /* ── Buttons ── */
 
@@ -336,9 +338,10 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
 
 /* ── Signatures ── */
 
+.signatures-grid,
 .signatures-section {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 2rem;
     margin-top: 2rem;
     padding-top: 1.5rem;
@@ -451,6 +454,12 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
 .section-heading { font-size: 1.05rem; color: var(--ksg-brown); border-left: 4px solid var(--ksg-brown); padding-left: .75rem; margin-bottom: 1rem; }
 .staff-block { margin-bottom: 1.5rem; }
 .staff-heading { font-size: .9rem; font-weight: 600; color: #555; margin-bottom: .5rem; padding: .4rem .75rem; background: #f5f0e8; border-radius: var(--radius); }
+
+/* ── HoD tree view (deputy director users page) ── */
+
+.hod-block { transition: box-shadow .2s; }
+.hod-block:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.hod-header:hover { background: #faf7f0; border-radius: var(--radius); }
 
 /* ── Report actions ── */
 
@@ -567,7 +576,6 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
     }
 
     .doc-header { margin-bottom: 1rem; }
-
     .doc-divider { border-top: 3px solid #7f622c !important; }
 }
 
@@ -582,6 +590,7 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
 
     .form-grid,
     .doc-signatures,
+    .signatures-grid,
     .signatures-section { grid-template-columns: 1fr; }
 
     .form-row   { grid-template-columns: 1fr; }

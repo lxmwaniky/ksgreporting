@@ -17,7 +17,6 @@ $reportCode = $report['report_code'] ?? 'N/A';
 
     <div class="report-document">
 
-        <!-- Document Header -->
         <div class="doc-header print-repeat-header">
             <img src="/assets/img/ksg-logo.png" alt="KSG Logo" class="doc-logo">
             <div class="doc-header-title">
@@ -29,7 +28,6 @@ $reportCode = $report['report_code'] ?? 'N/A';
 
         <div class="doc-divider"></div>
 
-        <!-- Report Meta -->
         <table class="doc-meta-table print-repeat-meta">
             <tr>
                 <th>Campus</th>
@@ -53,7 +51,6 @@ $reportCode = $report['report_code'] ?? 'N/A';
             </tr>
         </table>
 
-        <!-- Activities -->
         <div class="doc-section-heading">ACTIVITIES FOR THE WEEK</div>
 
         <table class="doc-activities-table">
@@ -91,10 +88,7 @@ $reportCode = $report['report_code'] ?? 'N/A';
             </tbody>
         </table>
 
-        <!-- Authorisation -->
-        <div class="doc-section-heading">AUTHORISATION</div>
-
-        <div class="doc-signatures">
+        <div class="doc-signatures" style="margin-top:1.5rem;">
             <div class="doc-sig-block">
                 <p class="doc-sig-role">Prepared By</p>
                 <table class="doc-sig-table">
@@ -114,7 +108,6 @@ $reportCode = $report['report_code'] ?? 'N/A';
             </div>
         </div>
 
-        <!-- Document Footer -->
         <div class="doc-footer">
             <img src="/assets/img/kebs.png" alt="KEBS" class="doc-footer-logo">
             <div class="doc-footer-center">

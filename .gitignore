@@ -3,3 +3,11 @@ vendor/
 *.log
 .DS_Store
 Thumbs.db
+.env.local
+.env.*.local
+/logs/
+composer.lock
+*.swp
+*.swo
+.idea/
+.vscode/

@@ -16,7 +16,7 @@ define('DEPARTMENTS', [
     'ict'                    => 'ICT',
     'hospitality'            => 'Hospitality',
     'training'               => 'Training',
-    'administration'         => 'Administration',
+    'administration_planning' => 'Administration & Planning',
     'finance_accounting'     => 'Finance & Accounting',
     'research_consultancy'   => 'Research & Consultancy',
     'procurement'            => 'Procurement',
@@ -24,40 +24,40 @@ define('DEPARTMENTS', [
 ]);
 
 define('SECTIONS', [
-    'ict'                => [],
-    'hospitality'        => [
-        'catering'       => 'Catering Section',
-        'hospitality'    => 'Hospitality Section',
+    'ict'                    => [],
+    'hospitality'            => [
+        'catering'           => 'Catering Section',
+        'hospitality'        => 'Hospitality Section',
     ],
-    'training'           => [
-        'library'           => 'Library Section',
-        'examinations'      => 'Examinations Section',
-        'business_dev'      => 'Business Development Section',
-        'admissions'        => 'Admissions Section',
+    'training'               => [
+        'library'            => 'Library Section',
+        'examinations'       => 'Examinations Section',
+        'business_dev'       => 'Business Development Section',
+        'admissions'         => 'Admissions Section',
     ],
-    'administration'     => [
-        'security'      => 'Security Section',
-        'maintenance'   => 'Maintenance Section',
+    'administration_planning' => [
+        'security'           => 'Security Section',
+        'maintenance'        => 'Maintenance Section',
     ],
-    'finance_accounting' => [
-        'accounting'    => 'Accounting Section',
-        'finance'       => 'Finance Section',
+    'finance_accounting'     => [
+        'accounting'         => 'Accounting Section',
+        'finance'            => 'Finance Section',
     ],
-    'research_consultancy' => [],
-    'procurement'          => [],
-    'human_resource'       => [
-        'registry'          => 'Registry Section',
-        'communication'     => 'Communication Section',
+    'research_consultancy'   => [],
+    'procurement'            => [],
+    'human_resource'         => [
+        'registry'           => 'Registry Section',
+        'communication'      => 'Communication Section',
         'telephone_exchange' => 'Telephone Exchange Section',
     ],
 ]);
 
 define('ROLES', [
-    'staff'            => 'Staff',
-    'hod'              => 'HoD / HoS / Team Leader',
-    'deputy_director'  => 'Deputy Director',
-    'director'         => 'Director',
-    'admin'            => 'Administrator',
+    'staff'           => 'Staff',
+    'hod'             => 'HoD / HoS / Team Leader',
+    'deputy_director' => 'Deputy Director',
+    'director'        => 'Director',
+    'admin'           => 'Administrator',
 ]);
 
 define('STATUSES', [
