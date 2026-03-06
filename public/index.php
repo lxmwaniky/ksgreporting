@@ -32,23 +32,31 @@ if ($role === 'staff') {
     $totalPages = (int)ceil($total / $perPage);
 
 } elseif ($role === 'hod') {
-    $filters = [
-        'campus'     => $currentUser['campus'],
-        'department' => $currentUser['department'],
-    ];
-    if ($weekStart) $filters['week_start'] = $weekStart;
-    if ($weekEnd)   $filters['week_end']   = $weekEnd;
-    $reports    = $reportModel->list($filters, $perPage, $offset);
-    $total      = $reportModel->count($filters);
-    $totalPages = (int)ceil($total / $perPage);
+    // HoD sees collapsible blocks: their own reports + staff in their dept
+    $hodPerPage = 5;
+    $backLink   = 'index.php';
+    $extraParams = [];
+
+    $stmt = $db->prepare("SELECT id, name, email, designation FROM users WHERE id = :id LIMIT 1");
+    $stmt->execute([':id' => $currentUser['id']]);
+    $hods = $stmt->fetchAll(); // just themselves
+
+    $stmt = $db->prepare("
+        SELECT id, name, email, designation
+        FROM users
+        WHERE campus = :campus AND department = :department AND role = 'staff' AND is_active = 1
+        ORDER BY name ASC
+    ");
+    $stmt->execute([':campus' => $currentUser['campus'], ':department' => $currentUser['department']]);
+    $staffList = $stmt->fetchAll();
 
 } elseif (in_array($role, ['deputy_director', 'director'])) {
     $filterDept = $_GET['department'] ?? '';
     $stmt = $db->prepare("
         SELECT r.department,
-               COUNT(r.id)                                    AS total_reports,
-               MAX(r.created_at)                              AS last_submitted,
-               COUNT(DISTINCT r.created_by)                   AS staff_count
+               COUNT(r.id)               AS total_reports,
+               MAX(r.created_at)         AS last_submitted,
+               COUNT(DISTINCT r.created_by) AS staff_count
         FROM reports r
         WHERE r.campus = :campus
           " . ($filterDept ? "AND r.department = :department" : "") . "
@@ -111,13 +119,12 @@ require_once __DIR__ . '/../templates/header.php';
         <form method="GET" action="./index.php" class="filters-form">
             <?php if ($role === 'admin'): ?>
             <div class="filter-group">
-                <label for="filter_campus">Campus</label>
-                <select name="campus" id="filter_campus" class="filter-control">
+                <label>Campus</label>
+                <select name="campus" class="filter-control">
                     <option value="">All Campuses</option>
                     <?php foreach (CAMPUSES as $key => $label): ?>
-                        <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
-                            <?= ($filterCampus ?? '') === $key ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
+                        <option value="<?= $key ?>" <?= ($filterCampus ?? '') === $key ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($label) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -126,13 +133,12 @@ require_once __DIR__ . '/../templates/header.php';
 
             <?php if (in_array($role, ['admin', 'deputy_director', 'director'])): ?>
             <div class="filter-group">
-                <label for="filter_department">Department</label>
-                <select name="department" id="filter_department" class="filter-control">
+                <label>Department</label>
+                <select name="department" class="filter-control">
                     <option value="">All Departments</option>
                     <?php foreach (DEPARTMENTS as $key => $label): ?>
-                        <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
-                            <?= ($filterDept ?? '') === $key ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
+                        <option value="<?= $key ?>" <?= ($filterDept ?? '') === $key ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($label) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -140,17 +146,14 @@ require_once __DIR__ . '/../templates/header.php';
             <?php endif; ?>
 
             <div class="filter-group">
-                <label for="filter_week_start">Week From</label>
-                <input type="date" name="week_start" id="filter_week_start"
-                       value="<?= htmlspecialchars($weekStart, ENT_QUOTES, 'UTF-8') ?>"
-                       class="filter-control">
+                <label>Week From</label>
+                <input type="date" name="week_start" class="filter-control"
+                       value="<?= htmlspecialchars($weekStart) ?>">
             </div>
-
             <div class="filter-group">
-                <label for="filter_week_end">Week To</label>
-                <input type="date" name="week_end" id="filter_week_end"
-                       value="<?= htmlspecialchars($weekEnd, ENT_QUOTES, 'UTF-8') ?>"
-                       class="filter-control">
+                <label>Week To</label>
+                <input type="date" name="week_end" class="filter-control"
+                       value="<?= htmlspecialchars($weekEnd) ?>">
             </div>
 
             <button type="submit" class="btn btn-primary">Filter</button>
@@ -170,37 +173,21 @@ require_once __DIR__ . '/../templates/header.php';
     <?php elseif ($role === 'hod'): ?>
 
         <div class="scope-notice">
-            Showing reports for
-            <strong><?= htmlspecialchars(CAMPUSES[$currentUser['campus']] ?? $currentUser['campus'], ENT_QUOTES, 'UTF-8') ?></strong>
+            <strong><?= htmlspecialchars(CAMPUSES[$currentUser['campus']] ?? $currentUser['campus']) ?></strong>
             &mdash;
-            <strong><?= htmlspecialchars(DEPARTMENTS[$currentUser['department']] ?? $currentUser['department'], ENT_QUOTES, 'UTF-8') ?></strong>
+            <strong><?= htmlspecialchars(DEPARTMENTS[$currentUser['department']] ?? $currentUser['department']) ?></strong>
         </div>
-        <?php if (empty($reports)): ?>
-            <div class="empty-state"><p>No reports found.</p></div>
-        <?php else: ?>
-            <div class="dept-section">
-                <h2 class="section-heading">My Reports</h2>
-                <?php if (empty($hodReports)): ?>
-                    <p class="empty-state-inline">No reports submitted by you yet.</p>
-                <?php else: ?>
-                    <?php $reports = array_values($hodReports); include __DIR__ . '/../templates/report_list.php'; ?>
-                <?php endif; ?>
-            </div>
-            <div class="dept-section" style="margin-top:2rem;">
-                <h2 class="section-heading">Staff Reports</h2>
-                <?php if (empty($staffReports)): ?>
-                    <p class="empty-state-inline">No staff reports found.</p>
-                <?php else: ?>
-                    <?php $reports = array_values($staffReports); include __DIR__ . '/../templates/report_list.php'; ?>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
+
+        <?php
+        $perPage = $hodPerPage;
+        include __DIR__ . '/../templates/report_blocks.php';
+        ?>
 
     <?php elseif (in_array($role, ['deputy_director', 'director'])): ?>
 
         <div class="scope-notice">
-            Showing all departments for
-            <strong><?= htmlspecialchars(CAMPUSES[$currentUser['campus']] ?? $currentUser['campus'], ENT_QUOTES, 'UTF-8') ?></strong>
+            <strong><?= htmlspecialchars(CAMPUSES[$currentUser['campus']] ?? $currentUser['campus']) ?></strong>
+            &mdash; all departments
         </div>
 
         <?php if (empty($departmentSummary)): ?>
@@ -210,7 +197,7 @@ require_once __DIR__ . '/../templates/header.php';
                 <?php foreach ($departmentSummary as $dept): ?>
                 <div class="dept-summary-card">
                     <div class="dept-summary-header">
-                        <h3><?= htmlspecialchars(DEPARTMENTS[$dept['department']] ?? $dept['department'], ENT_QUOTES, 'UTF-8') ?></h3>
+                        <h3><?= htmlspecialchars(DEPARTMENTS[$dept['department']] ?? $dept['department']) ?></h3>
                     </div>
                     <div class="dept-summary-stats">
                         <div class="stat">
@@ -240,14 +227,14 @@ require_once __DIR__ . '/../templates/header.php';
         <?php if (empty($campusSummary)): ?>
             <div class="empty-state"><p>No reports found.</p></div>
         <?php else: ?>
-            <?php foreach ($campusSummary as $campus => $depts): ?>
+            <?php foreach ($campusSummary as $c => $depts): ?>
             <div class="campus-block">
-                <h2 class="campus-heading"><?= htmlspecialchars(CAMPUSES[$campus] ?? $campus, ENT_QUOTES, 'UTF-8') ?></h2>
+                <h2 class="campus-heading"><?= htmlspecialchars(CAMPUSES[$c] ?? $c) ?></h2>
                 <div class="dept-summary-grid">
                     <?php foreach ($depts as $dept): ?>
                     <div class="dept-summary-card">
                         <div class="dept-summary-header">
-                            <h3><?= htmlspecialchars(DEPARTMENTS[$dept['department']] ?? $dept['department'], ENT_QUOTES, 'UTF-8') ?></h3>
+                            <h3><?= htmlspecialchars(DEPARTMENTS[$dept['department']] ?? $dept['department']) ?></h3>
                         </div>
                         <div class="dept-summary-stats">
                             <div class="stat">
@@ -263,7 +250,7 @@ require_once __DIR__ . '/../templates/header.php';
                                 <span class="stat-label">Last Submitted</span>
                             </div>
                         </div>
-                        <a href="./department_reports.php?department=<?= urlencode($dept['department']) ?>&campus=<?= urlencode($campus) ?><?= $weekStart ? '&week_start='.urlencode($weekStart) : '' ?><?= $weekEnd ? '&week_end='.urlencode($weekEnd) : '' ?>"
+                        <a href="./department_reports.php?department=<?= urlencode($dept['department']) ?>&campus=<?= urlencode($c) ?><?= $weekStart ? '&week_start='.urlencode($weekStart) : '' ?><?= $weekEnd ? '&week_end='.urlencode($weekEnd) : '' ?>"
                            class="btn btn-primary btn-block">View Reports</a>
                     </div>
                     <?php endforeach; ?>
@@ -274,10 +261,10 @@ require_once __DIR__ . '/../templates/header.php';
 
     <?php endif; ?>
 
-    <?php if (in_array($role, ['staff', 'hod']) && isset($totalPages) && $totalPages > 1): ?>
+    <?php if ($role === 'staff' && isset($totalPages) && $totalPages > 1): ?>
         <div class="pagination">
             <?php if ($page > 1): ?>
-                <a href="?page=<?= $page - 1 ?>&week_start=<?= urlencode($weekStart) ?>&week_end=<?= urlencode($weekEnd) ?>">&laquo; Previous</a>
+                <a href="?page=<?= $page - 1 ?>&week_start=<?= urlencode($weekStart) ?>&week_end=<?= urlencode($weekEnd) ?>">&laquo; Prev</a>
             <?php endif; ?>
             <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
                 <?php if ($i === $page): ?>
@@ -291,6 +278,7 @@ require_once __DIR__ . '/../templates/header.php';
             <?php endif; ?>
         </div>
     <?php endif; ?>
+
 </div>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>

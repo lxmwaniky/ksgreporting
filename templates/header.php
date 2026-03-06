@@ -33,7 +33,11 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
                     <?php endif; ?>
                 </div>
                 <div class="nav-user">
-                    <span class="nav-username"><?= htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <a href="profile.php"
+                       class="nav-username <?= $activePage === 'profile' ? 'nav-username--active' : '' ?>"
+                       title="View your profile">
+                        <?= htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8') ?>
+                    </a>
                     <span class="nav-badge"><?= htmlspecialchars(ROLES[$user['role']] ?? ucfirst($user['role']), ENT_QUOTES, 'UTF-8') ?></span>
                     <a href="logout.php" class="btn-logout">Logout</a>
                 </div>

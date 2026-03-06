@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/constants.php';
 
 use KSG\Auth;
 use KSG\Database;
+use KSG\Mailer;
 
 Auth::startSession();
 Auth::requireLogin();
@@ -26,15 +27,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die('Invalid security token.');
     }
 
-    $name        = trim($_POST['name'] ?? '');
-    $email       = trim($_POST['email'] ?? '');
-    $campus      = $_POST['campus'] ?? '';
-    $role        = $_POST['role'] ?? '';
-    $department  = $_POST['department'] ?? '';
-    $hodName     = trim($_POST['hod_name'] ?? '');
-    $designation = trim($_POST['designation'] ?? '');
-    $password    = $_POST['password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
+    $name            = trim($_POST['name']            ?? '');
+    $email           = trim($_POST['email']           ?? '');
+    $campus          = $_POST['campus']               ?? '';
+    $role            = $_POST['role']                 ?? '';
+    $department      = $_POST['department']           ?? '';
+    $hodName         = trim($_POST['hod_name']        ?? '');
+    $designation     = trim($_POST['designation']     ?? '');
+    $password        = $_POST['password']             ?? '';
+    $confirmPassword = $_POST['confirm_password']     ?? '';
 
     $allowedRoles = $currentUser['role'] === 'admin'
         ? ['staff', 'hod', 'deputy_director', 'director', 'admin']
@@ -74,7 +75,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES
                         (:name, :email, :password_hash, :campus, :role, :department, :hod_name, :designation, 1, CURRENT_TIMESTAMP)
                 ");
-
                 $stmt->execute([
                     ':name'          => $name,
                     ':email'         => $email,
@@ -86,7 +86,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':designation'   => $designation ?: null,
                 ]);
 
-                $_SESSION['success'] = 'User created successfully.';
+                // Send welcome email with credentials
+                try {
+                    $mailer = new Mailer();
+                    $mailer->sendWelcomeEmail($email, $name, $password, $role, $campus);
+                } catch (\Exception $e) {
+                    error_log('Welcome email failed: ' . $e->getMessage());
+                    // Don't block account creation if email fails
+                }
+
+                $_SESSION['success'] = 'User created successfully. A welcome email with login credentials has been sent.';
                 header('Location: /users.php');
                 exit;
             }
@@ -175,18 +184,17 @@ require_once __DIR__ . '/../templates/header.php';
 
                 <div class="form-group">
                     <label for="role">Role <span class="required">*</span></label>
-               <select name="role" id="role" required>
-     <option value="">-- Select Role --</option>
-    <?php
-     $allowedRoles = $currentUser['role'] === 'admin'
-        ? ['staff', 'hod', 'deputy_director', 'director', 'admin']
-        : ['staff', 'hod'];
-    foreach ($allowedRoles as $roleKey):
-    ?>
-        <option value="<?= $roleKey ?>" <?= ($_POST['role'] ?? '') === $roleKey ? 'selected' : '' ?>>
-            <?= htmlspecialchars(ROLES[$roleKey], ENT_QUOTES, 'UTF-8') ?>
-        </option>
-    <?php endforeach; ?>
+                    <select name="role" id="role" required>
+                        <option value="">-- Select Role --</option>
+                        <?php
+                        $allowedRoles = $currentUser['role'] === 'admin'
+                            ? ['staff', 'hod', 'deputy_director', 'director', 'admin']
+                            : ['staff', 'hod'];
+                        foreach ($allowedRoles as $roleKey): ?>
+                            <option value="<?= $roleKey ?>" <?= ($_POST['role'] ?? '') === $roleKey ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(ROLES[$roleKey], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             </div>
@@ -200,12 +208,15 @@ require_once __DIR__ . '/../templates/header.php';
                     <input type="password" name="password" id="password" required>
                     <small>Min. 8 characters, one uppercase letter, one number</small>
                 </div>
-
                 <div class="form-group">
                     <label for="confirm_password">Confirm Password <span class="required">*</span></label>
                     <input type="password" name="confirm_password" id="confirm_password" required>
                 </div>
             </div>
+            <p class="text-muted" style="font-size:.82rem; margin-top:.5rem;">
+                &#9993; The user will receive a welcome email containing their login email and this password.
+                They can change it anytime from their profile.
+            </p>
         </fieldset>
 
         <div class="form-actions">

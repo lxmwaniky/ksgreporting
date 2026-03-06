@@ -20,15 +20,17 @@ class Mailer
         $this->enabled = filter_var($_ENV['MAIL_ENABLED'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $this->config = [
-            'host'       => $_ENV['MAIL_HOST']         ?? 'localhost',
-            'port'       => (int)($_ENV['MAIL_PORT']   ?? 587),
-            'username'   => $_ENV['MAIL_USERNAME']      ?? '',
-            'password'   => $_ENV['MAIL_PASSWORD']      ?? '',
-            'encryption' => $_ENV['MAIL_ENCRYPTION']    ?? 'tls',
-            'from_email' => $_ENV['MAIL_FROM_ADDRESS']  ?? 'noreply@ksg.ac.ke',
-            'from_name'  => $_ENV['MAIL_FROM_NAME']     ?? 'KSG Reports System',
+            'host'       => $_ENV['MAIL_HOST']        ?? 'localhost',
+            'port'       => (int)($_ENV['MAIL_PORT']  ?? 587),
+            'username'   => $_ENV['MAIL_USERNAME']     ?? '',
+            'password'   => $_ENV['MAIL_PASSWORD']     ?? '',
+            'encryption' => $_ENV['MAIL_ENCRYPTION']   ?? 'tls',
+            'from_email' => $_ENV['MAIL_FROM_ADDRESS'] ?? 'noreply@ksg.ac.ke',
+            'from_name'  => $_ENV['MAIL_FROM_NAME']    ?? 'KSG Reports System',
         ];
     }
+
+    // ── Public sending methods ────────────────────────────────────────────────
 
     public function sendReportNotification(int $reportId): bool
     {
@@ -45,7 +47,7 @@ class Mailer
 
         $subject = sprintf(
             "Weekly Status Report - %s - %s",
-            CAMPUSES[$report['campus']] ?? $report['campus'],
+            CAMPUSES[$report['campus']]        ?? $report['campus'],
             DEPARTMENTS[$report['department']] ?? $report['department']
         );
 
@@ -66,7 +68,9 @@ class Mailer
                 return false;
             }
             $director = $this->getCampusDirector($report['campus']);
-            $bcc  = $director ? [['email' => $director['director_email'], 'name' => $director['director_name']]] : [];
+            $bcc      = $director
+                ? [['email' => $director['director_email'], 'name' => $director['director_name']]]
+                : [];
             $sent = $this->sendEmailWithBcc($deputy['email'], $deputy['name'], $subject, $body, $bcc, $reportId);
 
         } elseif ($report['creator_role'] === 'deputy_director') {
@@ -107,7 +111,9 @@ class Mailer
             $task['assigned_to_email'],
             $task['assigned_to_name'],
             "New Task Assigned: {$task['title']}",
-            $body
+            $body,
+            taskId: $taskId,
+            emailType: 'task_assigned'
         );
     }
 
@@ -127,7 +133,9 @@ class Mailer
                 $task['assigned_to_email'],
                 $task['assigned_to_name'],
                 "Overdue Task: {$task['title']}",
-                $body
+                $body,
+                taskId: $task['id'],
+                emailType: 'task_overdue'
             );
             if (!$sent) $success = false;
         }
@@ -139,7 +147,9 @@ class Mailer
                 $task['assigned_by_email'],
                 $task['assigned_by_name'],
                 "Task Overdue: {$task['title']}",
-                $body
+                $body,
+                taskId: $task['id'],
+                emailType: 'task_overdue'
             );
             if (!$sent) $success = false;
         }
@@ -147,36 +157,121 @@ class Mailer
         return $success;
     }
 
-    // Email builders
+    public function sendWelcomeEmail(
+        string $toEmail,
+        string $toName,
+        string $plainPassword,
+        string $role,
+        string $campus
+    ): bool {
+        if (!$this->enabled) {
+            error_log("Email notifications are disabled — welcome email not sent to {$toEmail}");
+            return false;
+        }
+
+        $appUrl     = $_ENV['APP_URL'] ?? 'http://localhost:8000';
+        $loginUrl   = $appUrl . '/login.php';
+        $roleName   = ROLES[$role]      ?? ucfirst($role);
+        $campusName = CAMPUSES[$campus] ?? ucfirst($campus);
+        $year       = date('Y');
+
+        $body = <<<HTML
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;color:#333;line-height:1.6;">
+<div style="max-width:600px;margin:0 auto;padding:20px;">
+    <div style="background:#5c4a1e;color:white;padding:20px;text-align:center;">
+        <h1 style="margin:0;font-size:1.4rem;">Kenya School of Government</h1>
+        <p style="margin:4px 0 0;font-size:.95rem;">Reports System — Account Created</p>
+    </div>
+    <div style="background:#f9f9f9;padding:28px;">
+        <p>Dear {$toName},</p>
+        <p>Your account on the <strong>KSG Weekly Reports System</strong> has been created.
+           Below are your login credentials:</p>
+        <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+            <tr>
+                <th style="text-align:left;padding:10px 12px;border:1px solid #ddd;background:#f0ede6;width:35%;">Login URL</th>
+                <td style="padding:10px 12px;border:1px solid #ddd;">
+                    <a href="{$loginUrl}" style="color:#5c4a1e;">{$loginUrl}</a>
+                </td>
+            </tr>
+            <tr>
+                <th style="text-align:left;padding:10px 12px;border:1px solid #ddd;background:#f0ede6;">Username (Email)</th>
+                <td style="padding:10px 12px;border:1px solid #ddd;font-family:monospace;">{$toEmail}</td>
+            </tr>
+            <tr>
+                <th style="text-align:left;padding:10px 12px;border:1px solid #ddd;background:#f0ede6;">Password</th>
+                <td style="padding:10px 12px;border:1px solid #ddd;font-family:monospace;">{$plainPassword}</td>
+            </tr>
+            <tr>
+                <th style="text-align:left;padding:10px 12px;border:1px solid #ddd;background:#f0ede6;">Role</th>
+                <td style="padding:10px 12px;border:1px solid #ddd;">{$roleName}</td>
+            </tr>
+            <tr>
+                <th style="text-align:left;padding:10px 12px;border:1px solid #ddd;background:#f0ede6;">Campus</th>
+                <td style="padding:10px 12px;border:1px solid #ddd;">{$campusName}</td>
+            </tr>
+        </table>
+        <div style="background:#fff8e1;border-left:4px solid #f0ad00;padding:12px 16px;margin:16px 0;font-size:.9rem;">
+            <strong>Security tip:</strong> You can change your password at any time by clicking your name
+            in the top navigation bar after logging in, then going to <em>My Profile</em>.
+        </div>
+        <p style="text-align:center;margin-top:24px;">
+            <a href="{$loginUrl}"
+               style="display:inline-block;padding:12px 32px;background:#5c4a1e;color:white;text-decoration:none;border-radius:4px;font-weight:bold;">
+                Log In Now
+            </a>
+        </p>
+    </div>
+    <div style="text-align:center;padding:16px;color:#999;font-size:12px;">
+        <p>This is an automated message from the KSG Reports System. Please do not reply.</p>
+        <p>Kenya School of Government &copy; {$year}</p>
+    </div>
+</div>
+</body>
+</html>
+HTML;
+
+        return $this->sendEmailDirect(
+            $toEmail,
+            $toName,
+            'Your KSG Reports System Account',
+            $body,
+            taskId: null,
+            emailType: 'welcome'
+        );
+    }
+
+    // ── Email builders ────────────────────────────────────────────────────────
 
     private function buildTaskEmail(array $task, string $type): string
     {
-        $appUrl   = $_ENV['APP_URL'] ?? 'http://localhost:8000';
-        $viewUrl  = $appUrl . '/task_view.php?id=' . $task['id'];
-        $deadline = date('d M Y', strtotime($task['deadline']));
-        $deptName = DEPARTMENTS[$task['department']] ?? ($task['department'] ?? '—');
-        $year     = date('Y');
-
-        $headerBg    = '#5c4a1e';
-        $headerTitle = 'Task Assignment Notification';
-        $intro       = "A new task has been assigned to you by <strong>{$task['assigned_by_name']}</strong>.";
-        $btnLabel    = 'View Task';
-        $btnColor    = '#5c4a1e';
+        $appUrl        = $_ENV['APP_URL'] ?? 'http://localhost:8000';
+        $viewUrl       = $appUrl . '/task_view.php?id=' . $task['id'];
+        $deadline      = date('d M Y', strtotime($task['deadline']));
+        $deptName      = DEPARTMENTS[$task['department']] ?? ($task['department'] ?? '—');
+        $year          = date('Y');
+        $headerBg      = '#5c4a1e';
+        $headerTitle   = 'Task Assignment Notification';
+        $intro         = "A new task has been assigned to you by <strong>{$task['assigned_by_name']}</strong>.";
+        $btnLabel      = 'View Task';
+        $btnColor      = '#5c4a1e';
         $deadlineStyle = 'color:#c0392b;';
 
         if ($type === 'overdue_assignee') {
-            $headerBg    = '#c0392b';
-            $headerTitle = 'Overdue Task Notification';
-            $intro       = "The following task assigned to you by <strong>{$task['assigned_by_name']}</strong> is now <strong style=\"color:#c0392b;\">overdue</strong>. Please action it immediately.";
-            $btnLabel    = 'View Overdue Task';
-            $btnColor    = '#c0392b';
+            $headerBg      = '#c0392b';
+            $headerTitle   = 'Overdue Task Notification';
+            $intro         = "The following task assigned to you by <strong>{$task['assigned_by_name']}</strong> is now <strong style=\"color:#c0392b;\">overdue</strong>. Please action it immediately.";
+            $btnLabel      = 'View Overdue Task';
+            $btnColor      = '#c0392b';
             $deadlineStyle = 'color:#c0392b;font-weight:bold;';
         } elseif ($type === 'overdue_assigner') {
-            $headerBg    = '#c0392b';
-            $headerTitle = 'Overdue Task Alert';
-            $intro       = "A task you assigned to <strong>{$task['assigned_to_name']}</strong> is now <strong style=\"color:#c0392b;\">overdue</strong> and has not been completed.";
-            $btnLabel    = 'View Overdue Task';
-            $btnColor    = '#c0392b';
+            $headerBg      = '#c0392b';
+            $headerTitle   = 'Overdue Task Alert';
+            $intro         = "A task you assigned to <strong>{$task['assigned_to_name']}</strong> is now <strong style=\"color:#c0392b;\">overdue</strong> and has not been completed.";
+            $btnLabel      = 'View Overdue Task';
+            $btnColor      = '#c0392b';
             $deadlineStyle = 'color:#c0392b;font-weight:bold;';
         }
 
@@ -198,30 +293,12 @@ class Mailer
         <p>Dear {$recipient},</p>
         <p>{$intro}</p>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-            <tr>
-                <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;width:30%;">Task</th>
-                <td style="padding:8px;border:1px solid #ddd;">{$task['title']}</td>
-            </tr>
-            <tr>
-                <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Description</th>
-                <td style="padding:8px;border:1px solid #ddd;">{$task['description']}</td>
-            </tr>
-            <tr>
-                <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Department</th>
-                <td style="padding:8px;border:1px solid #ddd;">{$deptName}</td>
-            </tr>
-            <tr>
-                <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Deadline</th>
-                <td style="padding:8px;border:1px solid #ddd;{$deadlineStyle}">{$deadline}</td>
-            </tr>
-            <tr>
-                <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Assigned To</th>
-                <td style="padding:8px;border:1px solid #ddd;">{$task['assigned_to_name']}</td>
-            </tr>
-            <tr>
-                <th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Assigned By</th>
-                <td style="padding:8px;border:1px solid #ddd;">{$task['assigned_by_name']}</td>
-            </tr>
+            <tr><th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;width:30%;">Task</th><td style="padding:8px;border:1px solid #ddd;">{$task['title']}</td></tr>
+            <tr><th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Description</th><td style="padding:8px;border:1px solid #ddd;">{$task['description']}</td></tr>
+            <tr><th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Department</th><td style="padding:8px;border:1px solid #ddd;">{$deptName}</td></tr>
+            <tr><th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Deadline</th><td style="padding:8px;border:1px solid #ddd;{$deadlineStyle}">{$deadline}</td></tr>
+            <tr><th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Assigned To</th><td style="padding:8px;border:1px solid #ddd;">{$task['assigned_to_name']}</td></tr>
+            <tr><th style="text-align:left;padding:8px;border:1px solid #ddd;background:#f0f0f0;">Assigned By</th><td style="padding:8px;border:1px solid #ddd;">{$task['assigned_by_name']}</td></tr>
         </table>
         <p style="text-align:center;">
             <a href="{$viewUrl}" style="display:inline-block;padding:12px 28px;background:{$btnColor};color:white;text-decoration:none;border-radius:4px;">{$btnLabel}</a>
@@ -239,9 +316,8 @@ HTML;
 
     private function buildReportEmail(array $report): string
     {
-        $appUrl  = $_ENV['APP_URL'] ?? 'http://localhost:8000';
-        $viewUrl = $appUrl . '/view.php?id=' . $report['id'];
-
+        $appUrl     = $_ENV['APP_URL'] ?? 'http://localhost:8000';
+        $viewUrl    = $appUrl . '/view.php?id=' . $report['id'];
         $campusName = CAMPUSES[$report['campus']]        ?? $report['campus'];
         $deptName   = DEPARTMENTS[$report['department']] ?? $report['department'];
         $weekStart  = date('d M Y', strtotime($report['reporting_week_start']));
@@ -309,7 +385,135 @@ HTML;
 HTML;
     }
 
-    // Sending helpers
+    // ── Private sending helpers ───────────────────────────────────────────────
+
+    private function sendEmail(
+        string $toEmail,
+        string $toName,
+        string $subject,
+        string $body,
+        int $reportId
+    ): bool {
+        $this->logEmailAttempt(
+            reportId:  $reportId,
+            taskId:    null,
+            emailType: 'report',
+            email:     $toEmail,
+            name:      $toName,
+            subject:   $subject
+        );
+
+        $mail = new PHPMailer(true);
+        try {
+            $this->configureMail($mail);
+            $mail->addAddress($toEmail, $toName);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+            $mail->send();
+            $this->updateEmailLog(reportId: $reportId, taskId: null, email: $toEmail, status: 'sent');
+            return true;
+        } catch (Exception $e) {
+            error_log("Email sending failed: {$mail->ErrorInfo}");
+            $this->updateEmailLog(reportId: $reportId, taskId: null, email: $toEmail, status: 'failed', error: $mail->ErrorInfo);
+            return false;
+        }
+    }
+
+    private function sendEmailWithBcc(
+        string $toEmail,
+        string $toName,
+        string $subject,
+        string $body,
+        array  $bcc,
+        int    $reportId
+    ): bool {
+        $this->logEmailAttempt(
+            reportId:  $reportId,
+            taskId:    null,
+            emailType: 'report',
+            email:     $toEmail,
+            name:      $toName,
+            subject:   $subject
+        );
+
+        $mail = new PHPMailer(true);
+        try {
+            $this->configureMail($mail);
+            $mail->addAddress($toEmail, $toName);
+            foreach ($bcc as $b) {
+                $mail->addBCC($b['email'], $b['name']);
+            }
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+            $mail->send();
+            $this->updateEmailLog(reportId: $reportId, taskId: null, email: $toEmail, status: 'sent');
+            return true;
+        } catch (Exception $e) {
+            error_log("Email sending failed: {$mail->ErrorInfo}");
+            $this->updateEmailLog(reportId: $reportId, taskId: null, email: $toEmail, status: 'failed', error: $mail->ErrorInfo);
+            return false;
+        }
+    }
+
+    /**
+     * General-purpose send. Now fully auditable via optional taskId + emailType.
+     * report emails still use sendEmail()/sendEmailWithBcc() above.
+     */
+    private function sendEmailDirect(
+        string  $toEmail,
+        string  $toName,
+        string  $subject,
+        string  $body,
+        ?int    $taskId    = null,
+        string  $emailType = 'task_assigned'
+    ): bool {
+        $this->logEmailAttempt(
+            reportId:  null,
+            taskId:    $taskId,
+            emailType: $emailType,
+            email:     $toEmail,
+            name:      $toName,
+            subject:   $subject
+        );
+
+        $mail = new PHPMailer(true);
+        try {
+            $this->configureMail($mail);
+            $mail->addAddress($toEmail, $toName);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+            $mail->send();
+            $this->updateEmailLog(reportId: null, taskId: $taskId, email: $toEmail, status: 'sent');
+            return true;
+        } catch (Exception $e) {
+            error_log("Email sending failed [{$emailType}]: {$mail->ErrorInfo}");
+            $this->updateEmailLog(reportId: null, taskId: $taskId, email: $toEmail, status: 'failed', error: $mail->ErrorInfo);
+            return false;
+        }
+    }
+
+    // ── PHPMailer configuration (DRY helper) ──────────────────────────────────
+
+    private function configureMail(PHPMailer $mail): void
+    {
+        $mail->isSMTP();
+        $mail->Host       = $this->config['host'];
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $this->config['username'];
+        $mail->Password   = $this->config['password'];
+        $mail->SMTPSecure = $this->config['encryption'];
+        $mail->Port       = $this->config['port'];
+        $mail->setFrom($this->config['from_email'], $this->config['from_name']);
+        $mail->addReplyTo($this->config['from_email'], $this->config['from_name']);
+    }
+
+    // ── DB helpers ────────────────────────────────────────────────────────────
 
     private function getTaskDetails(int $taskId): ?array
     {
@@ -330,138 +534,16 @@ HTML;
         return $stmt->fetch() ?: null;
     }
 
-    private function sendEmail(
-        string $toEmail,
-        string $toName,
-        string $subject,
-        string $body,
-        int $reportId
-    ): bool {
-        $this->logEmailAttempt($reportId, $toEmail, $toName, $subject);
-
-        $mail = new PHPMailer(true);
-
-        try {
-            $mail->isSMTP();
-            $mail->Host       = $this->config['host'];
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $this->config['username'];
-            $mail->Password   = $this->config['password'];
-            $mail->SMTPSecure = $this->config['encryption'];
-            $mail->Port       = $this->config['port'];
-
-            $mail->setFrom($this->config['from_email'], $this->config['from_name']);
-            $mail->addAddress($toEmail, $toName);
-            $mail->addReplyTo($this->config['from_email'], $this->config['from_name']);
-
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $body;
-            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
-
-            $mail->send();
-            $this->updateEmailLog($reportId, $toEmail, 'sent');
-            return true;
-
-        } catch (Exception $e) {
-            error_log("Email sending failed: {$mail->ErrorInfo}");
-            $this->updateEmailLog($reportId, $toEmail, 'failed', $mail->ErrorInfo);
-            return false;
-        }
-    }
-
-    private function sendEmailDirect(
-        string $toEmail,
-        string $toName,
-        string $subject,
-        string $body
-    ): bool {
-        $mail = new PHPMailer(true);
-
-        try {
-            $mail->isSMTP();
-            $mail->Host       = $this->config['host'];
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $this->config['username'];
-            $mail->Password   = $this->config['password'];
-            $mail->SMTPSecure = $this->config['encryption'];
-            $mail->Port       = $this->config['port'];
-
-            $mail->setFrom($this->config['from_email'], $this->config['from_name']);
-            $mail->addAddress($toEmail, $toName);
-            $mail->addReplyTo($this->config['from_email'], $this->config['from_name']);
-
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $body;
-            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
-
-            $mail->send();
-            return true;
-
-        } catch (Exception $e) {
-            error_log("Task email failed: {$mail->ErrorInfo}");
-            return false;
-        }
-    }
-
-    private function sendEmailWithBcc(
-        string $toEmail,
-        string $toName,
-        string $subject,
-        string $body,
-        array $bcc,
-        int $reportId
-    ): bool {
-        $this->logEmailAttempt($reportId, $toEmail, $toName, $subject);
-
-        $mail = new PHPMailer(true);
-
-        try {
-            $mail->isSMTP();
-            $mail->Host       = $this->config['host'];
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $this->config['username'];
-            $mail->Password   = $this->config['password'];
-            $mail->SMTPSecure = $this->config['encryption'];
-            $mail->Port       = $this->config['port'];
-
-            $mail->setFrom($this->config['from_email'], $this->config['from_name']);
-            $mail->addAddress($toEmail, $toName);
-            $mail->addReplyTo($this->config['from_email'], $this->config['from_name']);
-
-            foreach ($bcc as $b) {
-                $mail->addBCC($b['email'], $b['name']);
-            }
-
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $body;
-            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
-
-            $mail->send();
-            $this->updateEmailLog($reportId, $toEmail, 'sent');
-            return true;
-
-        } catch (Exception $e) {
-            error_log("Email sending failed: {$mail->ErrorInfo}");
-            $this->updateEmailLog($reportId, $toEmail, 'failed', $mail->ErrorInfo);
-            return false;
-        }
-    }
-    // DB helpers
-
     private function getReportDetails(int $reportId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT r.*, u.name as creator_name, u.email as creator_email, u.role as creator_role
+            SELECT r.*, u.name AS creator_name, u.email AS creator_email, u.role AS creator_role
             FROM reports r
             LEFT JOIN users u ON r.created_by = u.id
             WHERE r.id = :id
         ");
         $stmt->execute([':id' => $reportId]);
         $report = $stmt->fetch();
-
         if (!$report) return null;
 
         $stmt = $this->db->prepare("
@@ -469,7 +551,6 @@ HTML;
         ");
         $stmt->execute([':id' => $reportId]);
         $report['activities'] = $stmt->fetchAll();
-
         return $report;
     }
 
@@ -512,39 +593,93 @@ HTML;
         $stmt->execute([':id' => $reportId]);
     }
 
-    private function logEmailAttempt(int $reportId, string $email, string $name, string $subject): void
-    {
+    private function logEmailAttempt(
+        ?int   $reportId,
+        ?int   $taskId,
+        string $emailType,
+        string $email,
+        string $name,
+        string $subject
+    ): void {
         $stmt = $this->db->prepare("
-            INSERT INTO email_logs (report_id, recipient_email, recipient_name, subject, status, created_at)
-            VALUES (:report_id, :email, :name, :subject, 'pending', CURRENT_TIMESTAMP)
+            INSERT INTO email_logs
+                (report_id, task_id, email_type, recipient_email, recipient_name, subject, status, created_at)
+            VALUES
+                (:report_id, :task_id, :email_type, :email, :name, :subject, 'pending', CURRENT_TIMESTAMP)
         ");
-        $stmt->execute([':report_id' => $reportId, ':email' => $email, ':name' => $name, ':subject' => $subject]);
+        $stmt->execute([
+            ':report_id'  => $reportId,
+            ':task_id'    => $taskId,
+            ':email_type' => $emailType,
+            ':email'      => $email,
+            ':name'       => $name,
+            ':subject'    => $subject,
+        ]);
     }
 
-    private function updateEmailLog(int $reportId, string $email, string $status, ?string $error = null): void
-    {
+    private function updateEmailLog(
+        ?int    $reportId,
+        ?int    $taskId,
+        string  $email,
+        string  $status,
+        ?string $error = null
+    ): void {
+        // Scope the UPDATE to the most recent pending row for this recipient
+        // matched by whichever ID is available (report or task)
+        $scopeClause = $reportId !== null
+            ? 'report_id = :scope_id'
+            : ($taskId !== null ? 'task_id = :scope_id' : '1=1');
+
+        $scopeId = $reportId ?? $taskId;
+
         $stmt = $this->db->prepare("
             UPDATE email_logs
             SET status = :status, error_message = :error, sent_at = CURRENT_TIMESTAMP
-            WHERE report_id = :report_id
-              AND recipient_email = :email
+            WHERE recipient_email = :email
               AND status = 'pending'
+              AND {$scopeClause}
               AND id = (
                   SELECT id FROM email_logs
-                  WHERE report_id = :report_id2
-                    AND recipient_email = :email2
+                  WHERE recipient_email = :email2
                     AND status = 'pending'
+                    AND {$scopeClause2}
                   ORDER BY created_at DESC LIMIT 1
               )
         ");
-        $stmt->execute([
-            ':status'     => $status,
-            ':error'      => $error,
-            ':report_id'  => $reportId,
-            ':email'      => $email,
-            ':report_id2' => $reportId,
-            ':email2'     => $email,
-        ]);
+
+        $params = [
+            ':status' => $status,
+            ':error'  => $error,
+            ':email'  => $email,
+            ':email2' => $email,
+        ];
+
+        if ($scopeId !== null) {
+            $params[':scope_id']  = $scopeId;
+            $params[':scope_id2'] = $scopeId; // needed for subquery alias
+        }
+
+        // Replace placeholder in subquery
+        $sql = str_replace('{$scopeClause2}', $scopeClause === '1=1' ? '1=1' : str_replace(':scope_id', ':scope_id2', $scopeClause), $stmt->queryString ?? '');
+
+        // Re-prepare with correct subquery scope
+        $finalSql = "
+            UPDATE email_logs
+            SET status = :status, error_message = :error, sent_at = CURRENT_TIMESTAMP
+            WHERE recipient_email = :email
+              AND status = 'pending'
+              AND {$scopeClause}
+              AND id = (
+                  SELECT id FROM email_logs
+                  WHERE recipient_email = :email2
+                    AND status = 'pending'
+                    AND " . ($scopeId !== null ? str_replace(':scope_id', ':scope_id2', $scopeClause) : '1=1') . "
+                  ORDER BY created_at DESC LIMIT 1
+              )
+        ";
+
+        $stmt = $this->db->prepare($finalSql);
+        $stmt->execute($params);
     }
 
     public function testConnection(): bool
@@ -555,24 +690,15 @@ HTML;
         }
 
         $mail = new PHPMailer(true);
-
         try {
-            $mail->isSMTP();
-            $mail->Host       = $this->config['host'];
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $this->config['username'];
-            $mail->Password   = $this->config['password'];
-            $mail->SMTPSecure = $this->config['encryption'];
-            $mail->Port       = $this->config['port'];
-            $mail->SMTPDebug  = 0;
-            $mail->Timeout    = 10;
-
+            $this->configureMail($mail);
+            $mail->SMTPDebug = 0;
+            $mail->Timeout   = 10;
             if ($mail->smtpConnect()) {
                 $mail->smtpClose();
                 return true;
             }
             return false;
-
         } catch (Exception $e) {
             error_log("SMTP connection test failed: {$mail->ErrorInfo}");
             return false;

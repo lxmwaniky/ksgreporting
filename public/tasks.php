@@ -18,13 +18,11 @@ $role       = $user['role'];
 $campus     = $user['campus'];
 $department = $user['department'] ?? null;
 
-// ── Filters 
-$filterDept      = $_GET['department']  ?? '';
-$filterStaff     = $_GET['staff_id']    ?? '';
-$filterDateFrom  = $_GET['date_from']   ?? '';
-$filterDateTo    = $_GET['date_to']     ?? '';
+$filterDept     = $_GET['department'] ?? '';
+$filterStaff    = $_GET['staff_id']   ?? '';
+$filterDateFrom = $_GET['date_from']  ?? '';
+$filterDateTo   = $_GET['date_to']    ?? '';
 
-// ── Fetch tasks 
 if ($role === 'staff') {
     $tasks = $taskObj->getAssignedTo((int)$user['id'], $role, $campus, $department);
     $view  = 'assigned_to_me';
@@ -40,7 +38,6 @@ if ($role === 'staff') {
         : $taskObj->getAssignedBy((int)$user['id'], $role, $campus, $department);
 }
 
-// ── Apply filters in PHP
 if ($filterDept) {
     $tasks = array_filter($tasks, fn($t) => ($t['department'] ?? '') === $filterDept);
 }
@@ -58,7 +55,6 @@ if ($filterDateTo) {
 }
 $tasks = array_values($tasks);
 
-// ── Cluster by status 
 $clusters = [
     'overdue'     => [],
     'in_progress' => [],
@@ -82,7 +78,14 @@ $clusterConfig = [
     'completed'   => ['label' => 'Completed',    'color' => '#3a7d44'],
 ];
 
-// ── Staff list for HoD filter
+$perPage = 5;
+
+// Per-cluster page numbers from URL
+$clusterPages = [];
+foreach (array_keys($clusters) as $status) {
+    $clusterPages[$status] = max(1, (int)($_GET[$status . '_page'] ?? 1));
+}
+
 if ($role === 'hod') {
     $db   = \KSG\Database::getInstance()->getPdo();
     $stmt = $db->prepare("
@@ -92,6 +95,16 @@ if ($role === 'hod') {
     ");
     $stmt->execute([':campus' => $campus, ':department' => $department]);
     $staffList = $stmt->fetchAll();
+}
+
+// Build base query string preserving filters and view, excluding cluster page params
+function taskBaseQs(string $view, string $filterDept, string $filterStaff, string $filterDateFrom, string $filterDateTo): string {
+    $params = ['view' => $view];
+    if ($filterDept)     $params['department'] = $filterDept;
+    if ($filterStaff)    $params['staff_id']   = $filterStaff;
+    if ($filterDateFrom) $params['date_from']  = $filterDateFrom;
+    if ($filterDateTo)   $params['date_to']    = $filterDateTo;
+    return http_build_query($params);
 }
 
 $pageTitle = 'Tasks';
@@ -120,12 +133,6 @@ require_once __DIR__ . '/../templates/header.php';
 </div>
 <?php endif; ?>
 
-<?php
-// Show filters for: director (department + date), deputy_director (department + date),
-//                   hod (staff + date), staff (date only)
-$showFilters = true;
-?>
-<?php if ($showFilters): ?>
 <div class="filter-bar">
     <form method="GET" action="tasks.php" class="filters-form">
         <input type="hidden" name="view" value="<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>">
@@ -163,7 +170,6 @@ $showFilters = true;
             <input type="date" name="date_from" class="filter-control"
                    value="<?= htmlspecialchars($filterDateFrom, ENT_QUOTES, 'UTF-8') ?>">
         </div>
-
         <div class="filter-group">
             <label>Deadline To</label>
             <input type="date" name="date_to" class="filter-control"
@@ -174,7 +180,6 @@ $showFilters = true;
         <a href="tasks.php?view=<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>" class="btn btn-secondary">Clear</a>
     </form>
 </div>
-<?php endif; ?>
 
 <?php if (isset($_SESSION['success'])): ?>
     <div class="alert alert-success"><?= htmlspecialchars($_SESSION['success'], ENT_QUOTES, 'UTF-8') ?></div>
@@ -187,25 +192,37 @@ $showFilters = true;
     </div>
 <?php else: ?>
 
-<?php foreach ($clusterConfig as $status => $config): ?>
-<?php
-    $statusTasks = $clusters[$status];
-    $count       = count($statusTasks);
-    $color       = $config['color'];
-    $label       = $config['label'];
+<?php foreach ($clusterConfig as $status => $config):
+    $allTasks   = $clusters[$status];
+    $total      = count($allTasks);
+    $color      = $config['color'];
+    $label      = $config['label'];
+    $curPage    = $clusterPages[$status];
+    $totalPages = (int)ceil($total / $perPage);
+    $offset     = ($curPage - 1) * $perPage;
+    $pageTasks  = array_slice($allTasks, $offset, $perPage);
+    $baseQs     = taskBaseQs($view, $filterDept, $filterStaff, $filterDateFrom, $filterDateTo);
+
+    // Keep other clusters' current pages in pagination links
+    $otherPageParams = [];
+    foreach (array_keys($clusters) as $otherStatus) {
+        if ($otherStatus !== $status && $clusterPages[$otherStatus] > 1) {
+            $otherPageParams[$otherStatus . '_page'] = $clusterPages[$otherStatus];
+        }
+    }
 ?>
-<div class="task-cluster">
+<div class="task-cluster" id="cluster-<?= $status ?>">
     <div class="task-cluster-header" onclick="toggleCluster('<?= $status ?>')" style="cursor:pointer;">
         <span class="task-cluster-title" style="color:<?= $color ?>;">
             <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
-            <span class="task-cluster-count"><?= $count ?></span>
+            <span class="task-cluster-count"><?= $total ?></span>
         </span>
         <span class="task-cluster-toggle" id="toggle-<?= $status ?>">Show ▾</span>
     </div>
 
     <div id="body-<?= $status ?>" style="display:none;">
-        <?php if ($count === 0): ?>
-            <p class="empty-state-inline" style="padding:.5rem 0 1rem; padding-left:.25rem;">
+        <?php if ($total === 0): ?>
+            <p class="empty-state-inline" style="padding:.5rem 0 1rem .25rem;">
                 No <?= strtolower($label) ?> tasks.
             </p>
         <?php else: ?>
@@ -223,9 +240,9 @@ $showFilters = true;
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($statusTasks as $i => $task): ?>
+                    <?php foreach ($pageTasks as $i => $task): ?>
                     <tr>
-                        <td><?= $i + 1 ?></td>
+                        <td><?= $offset + $i + 1 ?></td>
                         <td><?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td>
                             <?= htmlspecialchars(DEPARTMENTS[$task['department']] ?? $task['department'] ?? '—', ENT_QUOTES, 'UTF-8') ?>
@@ -256,6 +273,45 @@ $showFilters = true;
                     <?php endforeach; ?>
                 </tbody>
             </table>
+
+            <?php if ($totalPages > 1): ?>
+            <div class="pagination" style="margin-top:.75rem;">
+                <?php if ($curPage > 1): ?>
+                    <a href="tasks.php?<?= $baseQs ?>&<?= http_build_query(array_merge($otherPageParams, [$status.'_page' => $curPage - 1])) ?>#cluster-<?= $status ?>">&laquo;</a>
+                <?php endif; ?>
+
+                <?php
+                $window = range(max(1, $curPage - 2), min($totalPages, $curPage + 2));
+                if (!in_array(1, $window)) {
+                    $qs = $baseQs . '&' . http_build_query(array_merge($otherPageParams, [$status.'_page' => 1]));
+                    echo '<a href="tasks.php?' . $qs . '#cluster-' . $status . '">1</a>';
+                    if ($window[0] > 2) echo '<span style="padding:0 4px;">…</span>';
+                }
+                foreach ($window as $p):
+                    $qs = $baseQs . '&' . http_build_query(array_merge($otherPageParams, [$status.'_page' => $p]));
+                ?>
+                    <?php if ($p === $curPage): ?>
+                        <span class="active"><?= $p ?></span>
+                    <?php else: ?>
+                        <a href="tasks.php?<?= $qs ?>#cluster-<?= $status ?>"><?= $p ?></a>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+                <?php
+                if (!in_array($totalPages, $window)) {
+                    if (end($window) < $totalPages - 1) echo '<span style="padding:0 4px;">…</span>';
+                    $qs = $baseQs . '&' . http_build_query(array_merge($otherPageParams, [$status.'_page' => $totalPages]));
+                    echo '<a href="tasks.php?' . $qs . '#cluster-' . $status . '">' . $totalPages . '</a>';
+                }
+                ?>
+
+                <?php if ($curPage < $totalPages): ?>
+                    <a href="tasks.php?<?= $baseQs ?>&<?= http_build_query(array_merge($otherPageParams, [$status.'_page' => $curPage + 1])) ?>#cluster-<?= $status ?>">&raquo;</a>
+                <?php endif; ?>
+            </div>
+            <p style="text-align:center;font-size:.78rem;color:#aaa;margin:.25rem 0 0;">
+                <?= $offset + 1 ?>–<?= min($offset + $perPage, $total) ?> of <?= $total ?>
+            </p>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
     </div>
@@ -304,9 +360,28 @@ function toggleCluster(status) {
     const toggle = document.getElementById('toggle-' + status);
     if (!body) return;
     const hidden = body.style.display === 'none';
-    body.style.display   = hidden ? 'block' : 'none';
-    toggle.textContent   = hidden ? 'Hide ▴' : 'Show ▾';
+    body.style.display = hidden ? 'block' : 'none';
+    toggle.textContent = hidden ? 'Hide ▴' : 'Show ▾';
 }
+
+// Re-open any cluster that has an active page from the URL on load
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    ['overdue', 'in_progress', 'pending', 'completed'].forEach(status => {
+        if (params.has(status + '_page')) {
+            const body   = document.getElementById('body-' + status);
+            const toggle = document.getElementById('toggle-' + status);
+            if (body) { body.style.display = 'block'; toggle.textContent = 'Hide ▴'; }
+        }
+    });
+
+    // Scroll to anchor if present
+    const hash = window.location.hash;
+    if (hash) {
+        const el = document.querySelector(hash);
+        if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+});
 </script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>

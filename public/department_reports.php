@@ -21,8 +21,6 @@ if (!in_array($role, ['deputy_director', 'director', 'admin'])) {
 
 $department = $_GET['department'] ?? '';
 $campus     = $_GET['campus']     ?? $currentUser['campus'];
-$weekStart  = $_GET['week_start'] ?? '';
-$weekEnd    = $_GET['week_end']   ?? '';
 
 if (!array_key_exists($department, DEPARTMENTS) || !array_key_exists($campus, CAMPUSES)) {
     header('Location: ./index.php');
@@ -34,79 +32,68 @@ if ($role !== 'admin' && $campus !== $currentUser['campus']) {
     exit;
 }
 
-$db = Database::getInstance()->getPdo();
+$db          = Database::getInstance()->getPdo();
+$perPage     = 5;
+$deptName    = DEPARTMENTS[$department];
+$campusName  = CAMPUSES[$campus];
+$pageTitle   = $deptName . ' — Reports';
+$backLink    = 'department_reports.php';
+$extraParams = ['department' => $department, 'campus' => $campus];
 
-$dateCondition = '';
-$dateParams    = [];
-if ($weekStart) { $dateCondition .= " AND r.reporting_week_start >= :week_start"; $dateParams[':week_start'] = $weekStart; }
-if ($weekEnd)   { $dateCondition .= " AND r.reporting_week_end <= :week_end";     $dateParams[':week_end']   = $weekEnd;   }
-
-$baseParams = array_merge([':campus' => $campus, ':department' => $department], $dateParams);
-
-// HoD / HoS / Team Leader reports
+// HoDs in this department
 $stmt = $db->prepare("
-    SELECT r.*, u.role AS creator_role, u.name AS creator_name_joined
-    FROM reports r
-    LEFT JOIN users u ON r.created_by = u.id
-    WHERE r.campus = :campus
-      AND r.department = :department
-      AND u.role = 'hod'
-      $dateCondition
-    ORDER BY r.reporting_week_start DESC, r.created_at DESC
+    SELECT id, name, email, designation
+    FROM users
+    WHERE campus = :campus AND department = :department AND role = 'hod' AND is_active = 1
+    ORDER BY name ASC
 ");
-$stmt->execute($baseParams);
-$hodReports = $stmt->fetchAll();
+$stmt->execute([':campus' => $campus, ':department' => $department]);
+$hods = $stmt->fetchAll();
 
-// Staff reports
+// Staff in this department
 $stmt = $db->prepare("
-    SELECT r.*, u.role AS creator_role, u.name AS creator_name_joined
-    FROM reports r
-    LEFT JOIN users u ON r.created_by = u.id
-    WHERE r.campus = :campus
-      AND r.department = :department
-      AND u.role = 'staff'
-      $dateCondition
-    ORDER BY u.name ASC, r.reporting_week_start DESC
+    SELECT id, name, email, designation
+    FROM users
+    WHERE campus = :campus AND department = :department AND role = 'staff' AND is_active = 1
+    ORDER BY name ASC
 ");
-$stmt->execute($baseParams);
-$staffRows = $stmt->fetchAll();
+$stmt->execute([':campus' => $campus, ':department' => $department]);
+$staffList = $stmt->fetchAll();
 
-$staffReports = [];
-foreach ($staffRows as $row) {
-    $staffReports[$row['creator_name_joined']][] = $row;
-}
+// Admin submissions
+$adminDateFrom = $_GET['admin_df'] ?? '';
+$adminDateTo   = $_GET['admin_dt'] ?? '';
+$adminPage     = max(1, (int)($_GET['admin_page'] ?? 1));
+$adminOffset   = ($adminPage - 1) * $perPage;
+$adminWhere    = ['r.campus = :campus', 'r.department = :department', "u.role = 'admin'"];
+$adminParams   = [':campus' => $campus, ':department' => $department];
+if ($adminDateFrom) { $adminWhere[] = 'r.reporting_week_start >= :adf'; $adminParams[':adf'] = $adminDateFrom; }
+if ($adminDateTo)   { $adminWhere[] = 'r.reporting_week_end   <= :adt'; $adminParams[':adt'] = $adminDateTo; }
+$wStr = implode(' AND ', $adminWhere);
 
-// Admin-submitted reports
-$stmt = $db->prepare("
-    SELECT r.*, u.role AS creator_role, u.name AS creator_name_joined
-    FROM reports r
-    LEFT JOIN users u ON r.created_by = u.id
-    WHERE r.campus = :campus
-      AND r.department = :department
-      AND u.role = 'admin'
-      $dateCondition
-    ORDER BY r.reporting_week_start DESC, r.created_at DESC
-");
-$stmt->execute($baseParams);
+$stmt = $db->prepare("SELECT r.*, u.name AS creator_name FROM reports r LEFT JOIN users u ON r.created_by = u.id WHERE $wStr ORDER BY r.reporting_week_start DESC LIMIT :lim OFFSET :off");
+foreach ($adminParams as $k => $v) $stmt->bindValue($k, $v);
+$stmt->bindValue(':lim', $perPage, PDO::PARAM_INT);
+$stmt->bindValue(':off', $adminOffset, PDO::PARAM_INT);
+$stmt->execute();
 $adminReports = $stmt->fetchAll();
 
-// Orphaned reports — created_by is NULL or user account deleted
-$stmt = $db->prepare("
-    SELECT r.*, NULL AS creator_role, NULL AS creator_name_joined
-    FROM reports r
-    LEFT JOIN users u ON r.created_by = u.id
-    WHERE r.campus = :campus
-      AND r.department = :department
-      AND (r.created_by IS NULL OR u.id IS NULL)
-      $dateCondition
-    ORDER BY r.reporting_week_start DESC, r.created_at DESC
-");
-$stmt->execute($baseParams);
-$orphanedReports = $stmt->fetchAll();
+$stmt = $db->prepare("SELECT COUNT(*) FROM reports r LEFT JOIN users u ON r.created_by = u.id WHERE $wStr");
+foreach ($adminParams as $k => $v) $stmt->bindValue($k, $v);
+$stmt->execute();
+$adminTotal  = (int)$stmt->fetchColumn();
+$adminPages  = (int)ceil($adminTotal / $perPage);
+$adminIsOpen = ($_GET['_open'] ?? '') === 'admin' || $adminDateFrom || $adminDateTo || (int)($_GET['admin_page'] ?? 0) > 1;
 
-$deptName   = DEPARTMENTS[$department] ?? $department;
-$campusName = CAMPUSES[$campus] ?? $campus;
-$pageTitle  = $deptName . ' — Reports';
+// Orphaned reports — created_by IS NULL
+$stmt = $db->prepare("
+    SELECT r.* FROM reports r
+    WHERE r.campus = :campus AND r.department = :department AND r.created_by IS NULL
+    ORDER BY r.reporting_week_start DESC
+");
+$stmt->execute([':campus' => $campus, ':department' => $department]);
+$orphanedReports = $stmt->fetchAll();
+$orphanedIsOpen  = ($_GET['_open'] ?? '') === 'orphaned';
 
 require_once __DIR__ . '/../templates/header.php';
 ?>
@@ -115,91 +102,127 @@ require_once __DIR__ . '/../templates/header.php';
     <div class="page-header">
         <div class="page-header-content">
             <h1><?= htmlspecialchars($deptName, ENT_QUOTES, 'UTF-8') ?></h1>
-            <a href="./index.php<?= $weekStart || $weekEnd ? '?week_start='.urlencode($weekStart).'&week_end='.urlencode($weekEnd) : '' ?>"
-               class="btn btn-secondary">&#8592; Back to Reports</a>
+            <a href="./index.php" class="btn btn-secondary">&#8592; Back to Reports</a>
         </div>
     </div>
 
     <div class="scope-notice">
-        <?= htmlspecialchars($campusName, ENT_QUOTES, 'UTF-8') ?>
-        &mdash; <?= htmlspecialchars($deptName, ENT_QUOTES, 'UTF-8') ?>
-        <?php if ($weekStart || $weekEnd): ?>
-            &mdash; <?= htmlspecialchars($weekStart, ENT_QUOTES, 'UTF-8') ?> to <?= htmlspecialchars($weekEnd, ENT_QUOTES, 'UTF-8') ?>
-        <?php endif; ?>
+        <?= htmlspecialchars($campusName, ENT_QUOTES, 'UTF-8') ?> &mdash;
+        <?= htmlspecialchars($deptName, ENT_QUOTES, 'UTF-8') ?>
     </div>
 
-    <?php
-    $backLink = './index.php' . ($weekStart || $weekEnd ? '?week_start='.urlencode($weekStart).'&week_end='.urlencode($weekEnd) : '');
+    <?php include __DIR__ . '/../templates/report_blocks.php'; ?>
 
-    function renderReportTable(array $reports, bool $showSubmitter = true): void { ?>
-        <table class="list-table">
-            <thead>
-                <tr>
-                    <th>Ref</th>
-                    <?php if ($showSubmitter): ?><th>Submitted By</th><?php endif; ?>
-                    <th>Reporting Week</th>
-                    <th>Report Date</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($reports as $r): ?>
-                <tr>
-                    <td><?= htmlspecialchars($r['report_code'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
-                    <?php if ($showSubmitter): ?>
-                    <td><?= htmlspecialchars($r['prepared_by_name'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
-                    <?php endif; ?>
-                    <td>
-                        <?= htmlspecialchars(date('d M', strtotime($r['reporting_week_start'])), ENT_QUOTES, 'UTF-8') ?>
-                        &ndash;
-                        <?= htmlspecialchars(date('d M Y', strtotime($r['reporting_week_end'])), ENT_QUOTES, 'UTF-8') ?>
-                    </td>
-                    <td><?= htmlspecialchars(date('d M Y', strtotime($r['report_date'])), ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><a href="./view.php?id=<?= (int)$r['id'] ?>" class="btn btn-sm btn-primary">View</a></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php } ?>
-
-    <!-- HoD / HoS / Team Leader Reports -->
-    <div class="dept-section">
-        <h2 class="section-heading">HoD / HoS / Team Leader Reports</h2>
-        <?php if (empty($hodReports)): ?>
-            <p class="empty-state">No HoD reports found.</p>
-        <?php else: ?>
-            <?php renderReportTable($hodReports); ?>
-        <?php endif; ?>
-    </div>
-
-    <!-- Staff Reports -->
-    <div class="dept-section" style="margin-top:2rem;">
-        <h2 class="section-heading">Staff Reports</h2>
-        <?php if (empty($staffReports)): ?>
-            <p class="empty-state">No staff reports found.</p>
-        <?php else: ?>
-            <?php foreach ($staffReports as $staffName => $reports): ?>
-            <div class="staff-block">
-                <h3 class="staff-heading"><?= htmlspecialchars($staffName, ENT_QUOTES, 'UTF-8') ?></h3>
-                <?php renderReportTable($reports, false); ?>
+    <?php if ($adminTotal > 0 || $adminDateFrom || $adminDateTo): ?>
+    <div class="hod-report-block" style="margin-top:1rem;" id="hod-block-admin-section">
+        <div class="hod-report-header" onclick="toggleBlock('admin-section')" style="background:#f0ede6;">
+            <div>
+                <strong>Admin Submissions</strong>
+                <span class="task-cluster-count" style="margin-left:.5rem;">
+                    <?= $adminTotal ?> report<?= $adminTotal !== 1 ? 's' : '' ?>
+                </span>
             </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-
-    <!-- Admin-submitted Reports -->
-    <?php if (!empty($adminReports)): ?>
-    <div class="dept-section" style="margin-top:2rem;">
-        <h2 class="section-heading">Admin Submissions</h2>
-        <?php renderReportTable($adminReports); ?>
+            <span class="task-cluster-toggle" id="icon-hod-admin-section">
+                <?= $adminIsOpen ? 'Hide ▴' : 'Show ▾' ?>
+            </span>
+        </div>
+        <div id="body-hod-admin-section"
+             style="<?= $adminIsOpen ? '' : 'display:none;' ?> padding:1rem; background:#fff; border:1px solid var(--border); border-top:none; border-radius:0 0 var(--radius) var(--radius);">
+            <form method="GET" action="department_reports.php" class="filters-form" style="margin-bottom:1rem;">
+                <input type="hidden" name="department" value="<?= htmlspecialchars($department) ?>">
+                <input type="hidden" name="campus"     value="<?= htmlspecialchars($campus) ?>">
+                <input type="hidden" name="_open"      value="admin">
+                <div class="filter-group">
+                    <label>Week From</label>
+                    <input type="date" name="admin_df" class="filter-control"
+                           value="<?= htmlspecialchars($adminDateFrom) ?>">
+                </div>
+                <div class="filter-group">
+                    <label>Week To</label>
+                    <input type="date" name="admin_dt" class="filter-control"
+                           value="<?= htmlspecialchars($adminDateTo) ?>">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                <a href="department_reports.php?department=<?= urlencode($department) ?>&campus=<?= urlencode($campus) ?>&_open=admin"
+                   class="btn btn-secondary btn-sm">Clear</a>
+            </form>
+            <?php if (empty($adminReports)): ?>
+                <p class="empty-state-inline">No reports found.</p>
+            <?php else: ?>
+                <table class="list-table">
+                    <thead>
+                        <tr><th>Ref</th><th>Submitted By</th><th>Reporting Week</th><th>Report Date</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($adminReports as $r): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($r['report_code'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
+                            <td><?= htmlspecialchars($r['prepared_by_name'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
+                            <td><?= date('d M', strtotime($r['reporting_week_start'])) ?> &ndash; <?= date('d M Y', strtotime($r['reporting_week_end'])) ?></td>
+                            <td><?= date('d M Y', strtotime($r['report_date'])) ?></td>
+                            <td><a href="./view.php?id=<?= (int)$r['id'] ?>" class="btn btn-sm btn-primary">View</a></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php if ($adminPages > 1): ?>
+                <div class="pagination" style="margin-top:.75rem;">
+                    <?php for ($p = 1; $p <= $adminPages; $p++):
+                        $qs = http_build_query(array_merge($_GET, ['department' => $department, 'campus' => $campus, 'admin_page' => $p, '_open' => 'admin']));
+                    ?>
+                        <?php if ($p === $adminPage): ?>
+                            <span class="active"><?= $p ?></span>
+                        <?php else: ?>
+                            <a href="department_reports.php?<?= $qs ?>#hod-block-admin-section"><?= $p ?></a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+                </div>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
     <?php endif; ?>
 
-    <!-- Orphaned Reports -->
     <?php if (!empty($orphanedReports)): ?>
-    <div class="dept-section" style="margin-top:2rem;">
-        <h2 class="section-heading">Unknown / Deleted User</h2>
-        <?php renderReportTable($orphanedReports); ?>
+    <div class="hod-report-block" style="margin-top:1rem;" id="hod-block-orphaned">
+        <div class="hod-report-header" onclick="toggleBlock('orphaned')"
+             style="background:#f5eded; border-left-color:#c0392b;">
+            <div>
+                <strong>Unknown / Unlinked Submissions</strong>
+                <span class="task-cluster-count" style="margin-left:.5rem;">
+                    <?= count($orphanedReports) ?> report<?= count($orphanedReports) !== 1 ? 's' : '' ?>
+                </span>
+            </div>
+            <span class="task-cluster-toggle" id="icon-hod-orphaned">
+                <?= $orphanedIsOpen ? 'Hide ▴' : 'Show ▾' ?>
+            </span>
+        </div>
+        <div id="body-hod-orphaned"
+             style="<?= $orphanedIsOpen ? '' : 'display:none;' ?> padding:1rem; background:#fff; border:1px solid var(--border); border-top:none; border-radius:0 0 var(--radius) var(--radius);">
+            <p class="text-muted" style="margin-bottom:.75rem; font-size:.82rem;">
+                These reports have no linked user account. They were submitted without a login session and cannot be attributed to a specific person.
+            </p>
+            <table class="list-table">
+                <thead>
+                    <tr><th>Ref</th><th>Prepared By</th><th>Reporting Week</th><th>Report Date</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($orphanedReports as $r): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($r['report_code'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
+                        <td><?= htmlspecialchars($r['prepared_by_name'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td>
+                        <td>
+                            <?= date('d M', strtotime($r['reporting_week_start'])) ?>
+                            &ndash;
+                            <?= date('d M Y', strtotime($r['reporting_week_end'])) ?>
+                        </td>
+                        <td><?= date('d M Y', strtotime($r['report_date'])) ?></td>
+                        <td><a href="./view.php?id=<?= (int)$r['id'] ?>" class="btn btn-sm btn-primary">View</a></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
     <?php endif; ?>
 
