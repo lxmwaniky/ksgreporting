@@ -23,6 +23,7 @@ $success = $_SESSION['success'] ?? null;
 $error   = $_SESSION['error']   ?? null;
 unset($_SESSION['success'], $_SESSION['error']);
 
+//Deputy Director / Director: read-only tree view
 if (in_array($currentUser['role'], ['deputy_director', 'director'])) {
 
     $campus = $currentUser['campus'];
@@ -141,7 +142,7 @@ if (in_array($currentUser['role'], ['deputy_director', 'director'])) {
     exit;
 }
 
-// ── Admin / HoD full management view ─────────────────────────────────────────
+// Admin / HoD full management view 
 
 $filters = [
     'campus' => $_GET['campus'] ?? '',
@@ -150,7 +151,7 @@ $filters = [
 ];
 
 $page    = max(1, (int)($_GET['page'] ?? 1));
-$perPage = 20;
+$perPage = 10;
 $offset  = ($page - 1) * $perPage;
 
 $where  = ['1=1'];
@@ -205,7 +206,12 @@ require_once __DIR__ . '/../templates/header.php';
 ?>
 
 <div class="container">
-    <h1>User Management</h1>
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1>User Management</h1>
+            <a href="/user_create.php" class="btn btn-primary">Add New User</a>
+        </div>
+    </div>
 
     <?php if ($success): ?>
         <div class="alert alert-success"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
@@ -213,10 +219,6 @@ require_once __DIR__ . '/../templates/header.php';
     <?php if ($error): ?>
         <div class="alert alert-error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
-
-    <div class="actions-bar">
-        <a href="/user_create.php" class="btn btn-primary">Add New User</a>
-    </div>
 
     <div class="filter-bar">
         <form method="GET" action="./users.php" class="filters-form">
@@ -310,21 +312,39 @@ require_once __DIR__ . '/../templates/header.php';
         </table>
 
         <?php if ($pages > 1): ?>
-        <div class="pagination">
+        <div class="pagination" style="margin-top:1rem;">
             <?php if ($page > 1): ?>
-                <a href="?page=<?= $page - 1 ?>&<?= http_build_query($filters) ?>">Previous</a>
+                <a href="?page=<?= $page - 1 ?>&<?= http_build_query($filters) ?>">&laquo;</a>
             <?php endif; ?>
-            <?php for ($i = max(1, $page - 2); $i <= min($pages, $page + 2); $i++): ?>
-                <?php if ($i === $page): ?>
-                    <span class="active"><?= $i ?></span>
+
+            <?php
+            $window = range(max(1, $page - 2), min($pages, $page + 2));
+            if (!in_array(1, $window)) {
+                echo '<a href="?page=1&' . http_build_query($filters) . '">1</a>';
+                if ($window[0] > 2) echo '<span style="padding:0 4px;">…</span>';
+            }
+            foreach ($window as $p):
+            ?>
+                <?php if ($p === $page): ?>
+                    <span class="active"><?= $p ?></span>
                 <?php else: ?>
-                    <a href="?page=<?= $i ?>&<?= http_build_query($filters) ?>"><?= $i ?></a>
+                    <a href="?page=<?= $p ?>&<?= http_build_query($filters) ?>"><?= $p ?></a>
                 <?php endif; ?>
-            <?php endfor; ?>
+            <?php endforeach; ?>
+            <?php
+            if (!in_array($pages, $window)) {
+                if (end($window) < $pages - 1) echo '<span style="padding:0 4px;">…</span>';
+                echo '<a href="?page=' . $pages . '&' . http_build_query($filters) . '">' . $pages . '</a>';
+            }
+            ?>
+
             <?php if ($page < $pages): ?>
-                <a href="?page=<?= $page + 1 ?>&<?= http_build_query($filters) ?>">Next</a>
+                <a href="?page=<?= $page + 1 ?>&<?= http_build_query($filters) ?>">&raquo;</a>
             <?php endif; ?>
         </div>
+        <p style="text-align:center;font-size:.8rem;color:#aaa;margin-top:.5rem;">
+            Showing <?= $offset + 1 ?>–<?= min($offset + $perPage, $total) ?> of <?= $total ?> users
+        </p>
         <?php endif; ?>
     <?php endif; ?>
 </div>

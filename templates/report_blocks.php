@@ -107,7 +107,16 @@ if (empty($hods) && empty($staffList)): ?>
     $total    = drCountReports($db, $hid, $dateFrom, $dateTo);
     $pages    = (int)ceil($total / $perPage);
     $reports  = drFetchReports($db, $hid, $dateFrom, $dateTo, $offset, $perPage);
-    $isOpen   = ($openBlock === $pfx || $dateFrom !== '' || $dateTo !== '' || (int)($_GET[$pfx.'_page'] ?? 0) > 1);
+    // Also keep HoD block open if any of its staff members have an active page or open state
+    $staffOpen = false;
+    foreach ($staffList as $_s) {
+        $_spfx = 's' . (int)$_s['id'];
+        if ($openBlock === $_spfx || (int)($_GET[$_spfx.'_page'] ?? 0) > 1) {
+            $staffOpen = true;
+            break;
+        }
+    }
+    $isOpen = ($openBlock === $pfx || $dateFrom !== '' || $dateTo !== '' || (int)($_GET[$pfx.'_page'] ?? 0) > 1 || $staffOpen);
 ?>
 
 <div class="hod-report-block" id="hod-block-<?= $hid ?>">
@@ -204,9 +213,19 @@ if (empty($hods) && empty($staffList)): ?>
         <?php endif; ?>
     </div>
 
-    <?php if (!empty($staffList)): ?>
+    <?php if (!empty($staffList)):
+        // Keep the staff panel open if any staff block under it is active
+        $panelOpen = false;
+        foreach ($staffList as $_s) {
+            $_spfx = 's' . (int)$_s['id'];
+            if ($openBlock === $_spfx || (int)($_GET[$_spfx.'_page'] ?? 0) > 1) {
+                $panelOpen = true;
+                break;
+            }
+        }
+    ?>
     <div id="staff-panel-<?= $hid ?>"
-         style="display:none; background:#fdfcf8; border:1px solid var(--border); border-top:none; padding:.5rem .5rem .5rem 1.5rem;">
+         style="<?= $panelOpen ? '' : 'display:none;' ?> background:#fdfcf8; border:1px solid var(--border); border-top:none; padding:.5rem .5rem .5rem 1.5rem;">
         <?php foreach ($staffList as $staff):
             $sid     = (int)$staff['id'];
             $spfx    = 's' . $sid;
