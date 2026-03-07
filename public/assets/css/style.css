@@ -60,6 +60,8 @@ body {
 
 .nav-user { display: flex; align-items: center; gap: .75rem; font-size: .85rem; }
 .nav-username { color: rgba(255,255,255,.9); font-size: .85rem; }
+/* Applied when the user is on their own profile page */
+.nav-username--active { text-decoration: underline; opacity: .85; }
 
 .nav-badge {
     background: var(--ksg-lime);
@@ -352,7 +354,7 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
 .signature-block p  { margin-bottom: .4rem; font-size: .9rem; }
 .signature-line { margin-top: 1.5rem; border-top: 1px solid #333; padding-top: .25rem; font-size: .75rem; color: #666; }
 
-/* ── Report document (view) ── */
+/* ── Report document (view/print) ── */
 
 .report-page-wrap { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
 
@@ -426,7 +428,7 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
 .doc-footer-logo { height: 32px; width: auto; object-fit: contain; flex-shrink: 0; }
 .doc-footer-center { display: flex; flex-direction: column; align-items: center; text-align: center; gap: .2rem; flex: 1; }
 
-/* ── Department summary cards ── */
+/* ── Department summary cards (index/reports overview) ── */
 
 .dept-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; margin-top: 1rem; }
 
@@ -455,11 +457,109 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
 .staff-block { margin-bottom: 1.5rem; }
 .staff-heading { font-size: .9rem; font-weight: 600; color: #555; margin-bottom: .5rem; padding: .4rem .75rem; background: #f5f0e8; border-radius: var(--radius); }
 
-/* ── HoD tree view (deputy director users page) ── */
+/* ── HoD tree view (deputy director / director users page) ── */
 
 .hod-block { transition: box-shadow .2s; }
 .hod-block:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12); }
 .hod-header:hover { background: #faf7f0; border-radius: var(--radius); }
+
+/* ── Directors card grid ── */
+
+.directors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+    margin-top: .25rem;
+}
+
+.director-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: box-shadow .2s;
+}
+.director-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+/* Slightly faded so inactive directors are visually distinct without hiding them */
+.director-card--inactive { opacity: .7; }
+
+.director-card-top {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    padding: 1.1rem 1.1rem .85rem;
+    border-bottom: 1px solid var(--border);
+    background: #f8f5ef;
+    position: relative;
+}
+
+.director-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--ksg-brown);
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.director-meta { flex: 1; min-width: 0; }
+.director-name {
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--ksg-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.director-campus { font-size: .78rem; color: #888; margin-top: .15rem; }
+
+/* Small dot in the top-right of the card header — green for active, grey for inactive */
+.director-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: .2rem;
+}
+.dot--active   { background: #3a7d44; box-shadow: 0 0 0 3px rgba(58,125,68,.15); }
+.dot--inactive { background: #aaa; }
+
+.director-card-body {
+    padding: .85rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+}
+
+.director-detail-row { display: flex; align-items: baseline; gap: .5rem; font-size: .85rem; }
+.director-detail-label {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #aaa;
+    white-space: nowrap;
+    min-width: 90px;
+}
+.director-detail-value { color: var(--ksg-dark); word-break: break-all; }
+
+.account-linked  { color: #3a7d44; font-weight: 600; }
+.account-missing { color: #c0392b; font-weight: 500; font-size: .82rem; }
+
+.director-card-actions {
+    padding: .75rem 1.1rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: .5rem;
+    background: #fdfcf9;
+}
 
 /* ── Report actions ── */
 
@@ -534,6 +634,7 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
         print-color-adjust: exact !important;
     }
 
+    /* Force background colours through — browsers strip them by default in print */
     .doc-section-heading    { background: #7f622c !important; color: #fff !important; }
     .doc-sig-role           { background: #7f622c !important; color: #fff !important; }
     .doc-meta-table th      { background: #f5f0e8 !important; }
@@ -610,6 +711,8 @@ fieldset legend { font-weight: 700; color: var(--ksg-brown); padding: 0 .5rem; }
     .dept-summary-stats { justify-content: space-around; }
 
     .report-document { padding: 1rem; }
+
+    .directors-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {

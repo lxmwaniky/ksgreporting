@@ -1,4 +1,5 @@
 -- KSG Reports System — PostgreSQL Schema
+-- Updated: March 2026
 
 CREATE DATABASE ksg_reports
     WITH ENCODING 'UTF8'
@@ -28,6 +29,20 @@ CREATE INDEX idx_users_campus     ON users(campus);
 CREATE INDEX idx_users_role       ON users(role);
 CREATE INDEX idx_users_active     ON users(is_active);
 CREATE INDEX idx_users_department ON users(department);
+
+-- Tracks every login attempt. Used to enforce IP-based rate limiting —
+-- 5 failures within 15 minutes locks the IP out for 30 minutes.
+-- Successes are also recorded to give a complete authentication audit trail.
+CREATE TABLE login_attempts (
+    id           SERIAL PRIMARY KEY,
+    ip           VARCHAR(45)   NOT NULL,
+    email        VARCHAR(255),
+    attempted_at TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    success      BOOLEAN       NOT NULL DEFAULT FALSE
+);
+
+-- Composite index on ip + time is the exact query the rate limiter runs
+CREATE INDEX idx_login_attempts_ip_time ON login_attempts(ip, attempted_at);
 
 CREATE TABLE campus_directors (
     id              SERIAL PRIMARY KEY,
@@ -64,12 +79,12 @@ CREATE TABLE reports (
     updated_at              TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_reports_campus     ON reports(campus);
-CREATE INDEX idx_reports_department ON reports(department);
-CREATE INDEX idx_reports_week_start ON reports(reporting_week_start);
-CREATE INDEX idx_reports_created_at ON reports(created_at);
-CREATE INDEX idx_reports_created_by ON reports(created_by);
-CREATE INDEX idx_reports_email_sent ON reports(email_sent);
+CREATE INDEX idx_reports_campus       ON reports(campus);
+CREATE INDEX idx_reports_department   ON reports(department);
+CREATE INDEX idx_reports_week_start   ON reports(reporting_week_start);
+CREATE INDEX idx_reports_created_at   ON reports(created_at);
+CREATE INDEX idx_reports_created_by   ON reports(created_by);
+CREATE INDEX idx_reports_email_sent   ON reports(email_sent);
 
 CREATE TABLE report_activities (
     id            SERIAL PRIMARY KEY,
@@ -84,20 +99,20 @@ CREATE TABLE report_activities (
 CREATE INDEX idx_report_activities_report ON report_activities(report_id);
 
 CREATE TABLE tasks (
-    id               SERIAL PRIMARY KEY,
-    title            VARCHAR(255)  NOT NULL,
-    description      TEXT,
-    assigned_by      INTEGER       REFERENCES users(id) ON DELETE SET NULL,
-    assigned_to      INTEGER       REFERENCES users(id) ON DELETE SET NULL,
-    campus           VARCHAR(50)   NOT NULL,
-    department       VARCHAR(100),
-    section          VARCHAR(100),
-    deadline         DATE,
-    status           VARCHAR(20)   NOT NULL DEFAULT 'pending'
-                         CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled', 'overdue')),
-    overdue_notified SMALLINT      NOT NULL DEFAULT 0,
-    created_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id                SERIAL PRIMARY KEY,
+    title             VARCHAR(255)  NOT NULL,
+    description       TEXT,
+    assigned_by       INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+    assigned_to       INTEGER       REFERENCES users(id) ON DELETE SET NULL,
+    campus            VARCHAR(50)   NOT NULL,
+    department        VARCHAR(100),
+    section           VARCHAR(100),
+    deadline          DATE,
+    status            VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled', 'overdue')),
+    overdue_notified  SMALLINT      NOT NULL DEFAULT 0,
+    created_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
@@ -123,10 +138,10 @@ CREATE TABLE email_logs (
     created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_email_logs_report ON email_logs(report_id);
-CREATE INDEX idx_email_logs_task   ON email_logs(task_id);
-CREATE INDEX idx_email_logs_status ON email_logs(status);
-CREATE INDEX idx_email_logs_type   ON email_logs(email_type);
+CREATE INDEX idx_email_logs_report  ON email_logs(report_id);
+CREATE INDEX idx_email_logs_task    ON email_logs(task_id);
+CREATE INDEX idx_email_logs_status  ON email_logs(status);
+CREATE INDEX idx_email_logs_type    ON email_logs(email_type);
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

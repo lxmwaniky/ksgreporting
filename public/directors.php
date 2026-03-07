@@ -17,94 +17,111 @@ if (Auth::user()['role'] !== 'admin') {
     exit;
 }
 
-$db = Database::getInstance()->getPdo();
+$db      = Database::getInstance()->getPdo();
 $success = $_SESSION['success'] ?? null;
-$error = $_SESSION['error'] ?? null;
+$error   = $_SESSION['error']   ?? null;
 unset($_SESSION['success'], $_SESSION['error']);
 
 $stmt = $db->query("
-    SELECT cd.*, u.name as user_name, u.email as user_email, u.is_active as user_status
+    SELECT cd.*, u.name AS user_name, u.email AS user_email, u.is_active AS user_status
     FROM campus_directors cd
     LEFT JOIN users u ON cd.user_id = u.id
     ORDER BY cd.campus
 ");
 $directors = $stmt->fetchAll();
 
+$pageTitle = 'Campus Directors';
 require_once __DIR__ . '/../templates/header.php';
 ?>
 
 <div class="container">
     <div class="page-header">
-        <h1>Campus Directors Management</h1>
-        <a href="/director_create.php" class="btn btn-primary">Add New Director</a>
+        <div class="page-header-content">
+            <h1>Campus Directors</h1>
+            <a href="/director_create.php" class="btn btn-primary">Add New Director</a>
+        </div>
     </div>
 
     <?php if ($success): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+        <div class="alert alert-success"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
-
     <?php if ($error): ?>
-        <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+        <div class="alert alert-error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
 
-    <div class="card">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Campus</th>
-                    <th>Director Name</th>
-                    <th>Email</th>
-                    <th>User Account</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($directors)): ?>
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 20px;">
-                            No directors found. Add directors to start managing campus leadership.
-                        </td>
-                    </tr>
+    <?php if (empty($directors)): ?>
+        <div class="empty-state">
+            <p>No directors found. Add a director to get started.</p>
+        </div>
+    <?php else: ?>
+    <div class="directors-grid">
+        <?php foreach ($directors as $d):
+            $hasAccount = !empty($d['user_id']);
+            $isActive   = (bool)$d['is_active'];
+            $initial    = strtoupper(mb_substr($d['director_name'], 0, 1));
+        ?>
+        <div class="director-card <?= !$isActive ? 'director-card--inactive' : '' ?>">
+
+            <div class="director-card-top">
+                <div class="director-avatar"><?= $initial ?></div>
+                <div class="director-meta">
+                    <div class="director-name">
+                        <?= htmlspecialchars($d['director_name'], ENT_QUOTES, 'UTF-8') ?>
+                    </div>
+                    <div class="director-campus">
+                        <?= htmlspecialchars(CAMPUSES[$d['campus']] ?? $d['campus'], ENT_QUOTES, 'UTF-8') ?>
+                    </div>
+                </div>
+                <span class="director-status-dot <?= $isActive ? 'dot--active' : 'dot--inactive' ?>"
+                      title="<?= $isActive ? 'Active' : 'Inactive' ?>"></span>
+            </div>
+
+            <div class="director-card-body">
+                <div class="director-detail-row">
+                    <span class="director-detail-label">Email</span>
+                    <span class="director-detail-value">
+                        <?= htmlspecialchars($d['director_email'], ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+                </div>
+                <div class="director-detail-row">
+                    <span class="director-detail-label">User Account</span>
+                    <span class="director-detail-value">
+                        <?php if ($hasAccount): ?>
+                            <span class="account-linked">
+                                &#10003; <?= htmlspecialchars($d['user_name'], ENT_QUOTES, 'UTF-8') ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="account-missing">&#9888; No account linked</span>
+                        <?php endif; ?>
+                    </span>
+                </div>
+                <div class="director-detail-row">
+                    <span class="director-detail-label">Status</span>
+                    <span class="director-detail-value">
+                        <span class="badge <?= $isActive ? 'badge-completed' : 'badge-cancelled' ?>">
+                            <?= $isActive ? 'Active' : 'Inactive' ?>
+                        </span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="director-card-actions">
+                <a href="/director_edit.php?id=<?= (int)$d['id'] ?>"
+                   class="btn btn-sm btn-primary">Edit</a>
+                <?php if ($isActive): ?>
+                    <a href="/director_deactivate.php?id=<?= (int)$d['id'] ?>"
+                       class="btn btn-sm btn-danger"
+                       onclick="return confirm('Deactivate this director?')">Deactivate</a>
                 <?php else: ?>
-                    <?php foreach ($directors as $director): ?>
-                        <tr>
-                            <td><?= htmlspecialchars(CAMPUSES[$director['campus']] ?? $director['campus']) ?></td>
-                            <td><?= htmlspecialchars($director['director_name']) ?></td>
-                            <td><?= htmlspecialchars($director['director_email']) ?></td>
-                            <td>
-                                <?php if ($director['user_id']): ?>
-                                    <span class="badge badge-info">
-                                        <?= htmlspecialchars($director['user_name']) ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span class="badge badge-warning">No Account</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php if ($director['is_active']): ?>
-                                    <span class="status-badge status-completed">Active</span>
-                                <?php else: ?>
-                                    <span class="status-badge status-delayed">Inactive</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <a href="/director_edit.php?id=<?= $director['id'] ?>" class="btn btn-small">Edit</a>
-                                <?php if ($director['is_active']): ?>
-                                    <a href="/director_deactivate.php?id=<?= $director['id'] ?>" 
-                                       class="btn btn-small btn-danger"
-                                       onclick="return confirm('Deactivate this director?')">Deactivate</a>
-                                <?php else: ?>
-                                    <a href="/director_activate.php?id=<?= $director['id'] ?>" 
-                                       class="btn btn-small btn-success">Activate</a>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                    <a href="/director_activate.php?id=<?= (int)$d['id'] ?>"
+                       class="btn btn-sm btn-secondary">Activate</a>
                 <?php endif; ?>
-            </tbody>
-        </table>
+            </div>
+
+        </div>
+        <?php endforeach; ?>
     </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>
