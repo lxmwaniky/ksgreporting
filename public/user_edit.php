@@ -57,6 +57,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password        = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
 
+    // Same server-side enforcement as user_create — ignore submitted value for HoD role
+    if ($role === 'hod' && !empty($campus)) {
+        $stmt = $db->prepare("
+            SELECT name FROM users
+            WHERE campus = :campus AND role = 'deputy_director' AND is_active = 1
+            LIMIT 1
+        ");
+        $stmt->execute([':campus' => $campus]);
+        $row     = $stmt->fetch();
+        $hodName = $row ? $row['name'] : null;
+    }
+
     $allowedRoles = $currentUser['role'] === 'admin'
         ? ['staff', 'hod', 'deputy_director', 'director', 'admin']
         : ['staff', 'hod'];
@@ -147,15 +159,17 @@ require_once __DIR__ . '/../templates/header.php';
 
 <div class="container">
     <div class="page-header">
-        <h1>Edit User</h1>
-        <a href="./users.php" class="btn btn-outline">&#8592; Back to Users</a>
+        <div class="page-header-content">
+            <h1>Edit User</h1>
+            <a href="./users.php" class="btn btn-outline">&#8592; Back to Users</a>
+        </div>
     </div>
 
     <?php if ($error): ?>
         <div class="alert alert-error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
 
-    <form method="POST" action="./user_edit.php?id=<?= (int) $userId ?>">
+    <form method="POST" action="./user_edit.php?id=<?= (int)$userId ?>">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Auth::csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
 
         <fieldset>
@@ -210,11 +224,11 @@ require_once __DIR__ . '/../templates/header.php';
                 </div>
 
                 <div class="form-group">
-                    <label for="hod_name">Head of Department Name</label>
+                    <label for="hod_name">Head of Department</label>
                     <input type="text" name="hod_name" id="hod_name"
                            value="<?= htmlspecialchars($_POST['hod_name'] ?? $user['hod_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                           placeholder="e.g. Eng. Maurice Odida" maxlength="150">
-                    <small>The HoD for this user's department</small>
+                           placeholder="Select campus and role first" maxlength="150">
+                    <small id="hod_hint">The HoD / supervisor for this user</small>
                 </div>
 
                 <div class="form-group">
@@ -244,7 +258,6 @@ require_once __DIR__ . '/../templates/header.php';
                     <input type="password" name="password" id="password">
                     <small>Leave blank to keep current password</small>
                 </div>
-
                 <div class="form-group">
                     <label for="confirm_password">Confirm New Password</label>
                     <input type="password" name="confirm_password" id="confirm_password">
@@ -258,5 +271,45 @@ require_once __DIR__ . '/../templates/header.php';
         </div>
     </form>
 </div>
+
+<script>
+const campusSelect = document.getElementById('campus');
+const roleSelect   = document.getElementById('role');
+const hodInput     = document.getElementById('hod_name');
+const hodHint      = document.getElementById('hod_hint');
+
+function updateHodField() {
+    const campus = campusSelect.value;
+    const role   = roleSelect.value;
+
+    if (role === 'hod' && campus) {
+        hodInput.readOnly         = true;
+        hodInput.style.background = '#f5f0e8';
+
+        fetch(`/get_deputy_director.php?campus=${encodeURIComponent(campus)}`)
+            .then(r => r.json())
+            .then(data => {
+                hodInput.value = data.name ?? '';
+                hodHint.textContent = data.name
+                    ? 'Auto-filled: Deputy Director of this campus'
+                    : 'No Deputy Director found for this campus';
+            });
+    } else {
+        hodInput.readOnly         = false;
+        hodInput.style.background = '';
+        hodHint.textContent       = 'The HoD / supervisor for this user';
+    }
+}
+
+// On page load, lock the field if this is already a HoD record
+if (roleSelect.value === 'hod') {
+    hodInput.readOnly         = true;
+    hodInput.style.background = '#f5f0e8';
+    hodHint.textContent       = 'Auto-filled: Deputy Director of this campus';
+}
+
+campusSelect.addEventListener('change', updateHodField);
+roleSelect.addEventListener('change', updateHodField);
+</script>
 
 <?php require_once __DIR__ . '/../templates/footer.php'; ?>
