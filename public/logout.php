@@ -1,11 +1,5 @@
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
+declare(strict_types=1);
 
-use KSG\Auth;
-
-Auth::startSession();
-Auth::logout();
-
-header('Location: /login.php');
-exit;
+require __DIR__ . '/auth/logout.php';
