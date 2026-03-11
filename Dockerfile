@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libonig-dev \
     libxml2-dev \
+    unzip \
+    git \
     && docker-php-ext-install \
         pdo \
         pdo_pgsql \
