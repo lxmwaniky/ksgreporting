@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Validate & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo, pdo_pgsql, mbstring, xml
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Lint all PHP files
+        run: |
+          find . -path ./vendor -prune -o -name "*.php" -print \
+            | xargs -I{} php -l {} \
+            | grep -v "No syntax errors" || true
+          # Fail the step if any parse errors were found
+          find . -path ./vendor -prune -o -name "*.php" -print \
+            | xargs -I{} php -l {} 2>&1 \
+            | grep -q "Parse error" && exit 1 || exit 0

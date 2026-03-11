@@ -1,12 +1,12 @@
-.env
 vendor/
-*.log
-.DS_Store
-Thumbs.db
+.env
 .env.local
 .env.*.local
-/logs/
+.git/
+logs/
+*.log
 *.swp
 *.swo
 .idea/
 .vscode/
+README.md

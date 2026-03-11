@@ -1,0 +1,8 @@
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# Mark overdue tasks + notify assignees — daily at 07:00 Nairobi (UTC+3 = 04:00 UTC)
+0 4 * * * root php /var/www/html/cron/overdue_tasks.php >> /var/log/ksg-cron/overdue.log 2>&1
+
+# Flush the email queue — every minute
+* * * * * root php /var/www/html/cron/process_email_queue.php >> /var/log/ksg-cron/email_queue.log 2>&1

@@ -1,0 +1,52 @@
+services:
+
+  # ── Web application (PHP 8.2 + Apache) ─────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ksg_app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── Cron worker (PHP CLI — no web server) ──────────────────────────────────
+  cron:
+    build:
+      context: .
+      dockerfile: docker/cron/Dockerfile
+    container_name: ksg_cron
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── PostgreSQL 17 ───────────────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    container_name: ksg_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-ksg_reports}
+      POSTGRES_USER:     ${DB_USER:-ksg_user}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # schema.sql is mounted read-only so init.sh can read it
+      - ./database/schema.sql:/schema.sql:ro
+      - ./docker/db/init.sh:/docker-entrypoint-initdb.d/01_init.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ksg_user} -d ${DB_NAME:-ksg_reports}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
